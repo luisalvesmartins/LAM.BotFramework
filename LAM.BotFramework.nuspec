@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <projectUrl>https://github.com/luisalvesmartins/LAMBotFramework</projectUrl>
+    <description>Framework to build datadriven bots using the Bot Framework</description>
+    <releaseNotes>Version 1.0.0.2</releaseNotes>
+    <copyright>Copyright 2017</copyright>
+    <tags>Bot Framework</tags>
+  </metadata>
+</package>
