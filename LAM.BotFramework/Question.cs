@@ -143,12 +143,24 @@ namespace LAM.BotFramework
             }
             #endregion
 
+            //string s1 = "[{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]},{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]}]";
+            //string s = "[{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]}]";
+            //CurrentQuestionRow.QuestionText = s;
+
             #region HANDLE HERO info
             string LogPrompt = PromptTranslated;
             bool bHasHero = false;
             if (CurrentQuestionRow.QuestionText.IndexOf("{") == 0)
             {
                 await HeroCardPrompt(context, language);
+                LogPrompt = CurrentQuestionRow.QuestionText;
+                CurrentQuestionRow.QuestionText = "";
+                PromptTranslated = "";
+                bHasHero = true;
+            }
+            if (CurrentQuestionRow.QuestionText.IndexOf("[") == 0)
+            {
+                await CarouselCardPrompt(context, language);
                 LogPrompt = CurrentQuestionRow.QuestionText;
                 CurrentQuestionRow.QuestionText = "";
                 PromptTranslated = "";
@@ -280,12 +292,12 @@ namespace LAM.BotFramework
                     foreach (AttachmentCard item in opat)
                     {
                         string actiontype = "";
-                        switch (item.action.type)
+                        switch (item.action.type.ToLower())
                         {
-                            case "OpenURL":
+                            case "openurl":
                                 actiontype = ActionTypes.OpenUrl;
                                 break;
-                            case "ImBack":
+                            case "imback":
                                 actiontype = ActionTypes.ImBack;
                                 break;
                             default:
@@ -448,11 +460,17 @@ namespace LAM.BotFramework
                                         RetryPrompt);
                     break;
                 case "Message":
-                    await context.PostAsync(PromptTranslated);
+                    if (!bHasHero)
+                    {
+                        await context.PostAsync(PromptTranslated);
+                    }
                     await ProcessResponse(context, "", null);
                     break;
                 case "MessageEnd":
-                    await context.PostAsync(PromptTranslated);
+                    if (!bHasHero)
+                    {
+                        await context.PostAsync(PromptTranslated);
+                    }
 
                     context.Done(true);
                     break;
@@ -558,6 +576,64 @@ namespace LAM.BotFramework
                     {
                         Bot.GetHeroCard(iti, isu, ite,new List<CardImage>() {  new CardImage(url: item1.imageURL) }, LCA)
                     };
+            await context.PostAsync(replyH);
+        }
+        private async Task CarouselCardPrompt(IDialogContext context, string language)
+        {
+            var replyH = context.MakeMessage();
+
+            AttachmentHero[] items = JsonConvert.DeserializeObject<AttachmentHero[]>(CurrentQuestionRow.QuestionText.Replace("'", "\""));
+            if (items.Length>1)
+                replyH.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+
+            //{ 'subtitle': 'aa','text': 'aa','imageURL': 'http://lambot.azurewebsites.net/Images/cardgold.png',  'action': [    {      'type': 'ImBack',      'title': 'aaa',      'value': 'bbb'    },    {      'type': 'ImBack',      'title': 'aaa2',      'value': 'bbb2'    }  ]}
+            //type,title,subtitle,text,urlforimage,urltoopen
+            List<Attachment> LA = new List<Attachment>();
+            foreach (AttachmentHero item in items)
+            {
+                string iti = item.title;
+                string isu = item.subtitle;
+                string ite = item.text;
+                if (language != "en")
+                {
+                    iti = Translator.Translate(TranslatorToken, iti, "en", language);
+                    isu = Translator.Translate(TranslatorToken, isu, "en", language);
+                    ite = Translator.Translate(TranslatorToken, ite, "en", language);
+                }
+
+                List<CardAction> LCA = new List<CardAction>();
+                foreach (var actions in item.action)
+                {
+                    string actiontype = "";
+                    switch (actions.type)
+                    {
+                        case "OpenURL":
+                            actiontype = ActionTypes.OpenUrl;
+                            break;
+                        case "ImBack":
+                            actiontype = ActionTypes.ImBack;
+                            break;
+                        default:
+                            actiontype = ActionTypes.ImBack;
+                            break;
+                    }
+                    string ati = actions.title;
+                    string ava = actions.value;
+                    if (language != "en")
+                    {
+                        ati = Translator.Translate(TranslatorToken, ati, "en", language);
+                        ava = Translator.Translate(TranslatorToken, ava, "en", language);
+                    }
+                    CardAction CA = new CardAction(actiontype, ati, value: ava);
+                    LCA.Add(CA);
+                }
+                LA.Add(
+                    Bot.GetHeroCard(iti, isu, ite,new List<CardImage>() {  new CardImage(url: item.imageURL) }, LCA)
+                 );
+
+            }
+
+            replyH.Attachments = LA;
             await context.PostAsync(replyH);
         }
 

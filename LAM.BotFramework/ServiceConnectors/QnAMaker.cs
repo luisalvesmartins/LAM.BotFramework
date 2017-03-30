@@ -16,34 +16,36 @@ namespace LAM.BotFramework.ServiceConnectors
         public static QnAMakerResult Get(string knowledgebaseId, string qnamakerSubscriptionKey, string Query)
         {
             string responseString = string.Empty;
-
-            //Build the URI
-            Uri qnamakerUriBase = new Uri(QnAMakerURL);
-            var builder = new UriBuilder($"{qnamakerUriBase}/knowledgebases/{knowledgebaseId}/generateAnswer");
-            QQ q = new QQ();
-            q.question = Query;
-            var postBody = JsonConvert.SerializeObject(q);
-            //var postBody = $"{{\"question\": \"{Query}\"}}";
-            //Send the POST request
-            using (WebClient client = new WebClient())
-            {
-                //Add the subscription key header
-                client.Headers.Add("Ocp-Apim-Subscription-Key", qnamakerSubscriptionKey);
-                client.Headers.Add("Content-Type", "application/json");
-                client.Encoding = System.Text.Encoding.UTF8;
-                responseString = client.UploadString(builder.Uri, postBody);
-            }
-
-            //De-serialize the response
             QnAMakerResult response;
+
             try
             {
+                //Build the URI
+                Uri qnamakerUriBase = new Uri(QnAMakerURL);
+                var builder = new UriBuilder($"{qnamakerUriBase}/knowledgebases/{knowledgebaseId}/generateAnswer");
+                QQ q = new QQ();
+                q.question = Query;
+                var postBody = JsonConvert.SerializeObject(q);
+                //var postBody = $"{{\"question\": \"{Query}\"}}";
+                //Send the POST request
+                using (WebClient client = new WebClient())
+                {
+                    //Add the subscription key header
+                    client.Headers.Add("Ocp-Apim-Subscription-Key", qnamakerSubscriptionKey);
+                    client.Headers.Add("Content-Type", "application/json");
+                    client.Encoding = System.Text.Encoding.UTF8;
+                    responseString = client.UploadString(builder.Uri, postBody);
+                }
+                //De-serialize the response
                 response = JsonConvert.DeserializeObject<QnAMakerResult>(responseString);
             }
-            catch
+            catch (Exception EQ)
             {
-                throw new Exception("Unable to deserialize QnA Maker response string.");
+                response = new QnAMakerResult();
+                response.Score = 50;
+                response.Answer = "Error:" + EQ.Message;
             }
+
             return response;
         }
         public class QQ

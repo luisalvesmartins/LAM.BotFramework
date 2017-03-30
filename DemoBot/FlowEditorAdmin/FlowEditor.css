@@ -1,0 +1,188 @@
+﻿body {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    outline: 1px solid green;
+    height: 100vh;
+}
+
+    body > div {
+        flex: 0;
+        order: 1;
+    }
+
+section {
+    flex: 1;
+    background-color: #eeeeee;
+    display: flex;
+    border-top: 1px solid grey;
+    order: 2;
+}
+
+#tabs {
+    margin-left: 40px;
+}
+
+.maintitle {
+    font: 36pt 'Segoe UI Light';
+    margin: 5px;
+}
+
+.tabsel {
+    display: inline-block;
+    border: solid gray;
+    border-width: 1px 1px 0 1px;
+    margin-top: 5px;
+    font: 10pt 'Segoe UI';
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-left: 5px;
+    padding-bottom: 5px;
+    font-weight: bold;
+    border-top: 2px solid orange;
+    background-color: #eeeeee;
+    text-decoration: none;
+}
+
+.tabunsel {
+    display: inline-block;
+    border: solid gray;
+    border-width: 1px 1px 0 1px;
+    margin-top: 5px;
+    font: 10pt 'Segoe UI';
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-left: 5px;
+    padding-bottom: 5px;
+    border-top: 2px solid lightgray;
+    background-color: white;
+    text-decoration: none;
+}
+
+.leftBar {
+    font: 8px Verdana;
+    width: 70px;
+    min-width: 70px;
+    margin-left: 2px;
+}
+
+    .leftBar > div {
+        font: bold 8px Verdana;
+        margin-left: 2px;
+        margin-top: 5px;
+    }
+
+    .leftBar > button {
+        width: 70px;
+        height: 25px;
+        margin-top: 2px;
+        margin-right: 2px;
+        font-size: 9px;
+    }
+
+    .leftBar > div > button {
+        width: 20px;
+        height: 20px;
+        margin:0px;
+        padding:0px;
+        font-size: 12px;
+    }
+
+.cnvContainer {
+    margin: 2px;
+    height: 100vh;
+    background-color: yellow;
+    overflow: scroll;
+    float: left;
+}
+
+.propContainer {
+    font: 10pt Verdana;
+}
+
+#divwizardmain {
+    display:none;
+    flex: 1 1 auto;
+    min-width: 250px;
+    max-width: 250px;
+    background-color: InactiveBorder;
+    flex-basis: 250px;
+    width: 250px;
+    background-color: #eeeeee;
+}
+
+    #divwizardmain input {
+        width: 230px;
+    }
+
+#divpreview{
+    display:none;
+}
+.regheader{
+    font-size: 12pt;
+    padding: 5px;
+    color: Black;
+    border-bottom: 1px solid gray;
+}
+
+#divlink{
+    display:none;
+}
+
+#divlink input {
+    width: 230px;
+}
+
+#divphrases input {
+    width: 230px;
+}
+
+#divoptrend {
+    padding-left: 5px;
+}
+
+#divwizard {
+    padding: 5px;
+}
+
+    #divwizard > div > div:first-of-type {
+        padding-top: 5px;
+        padding-bottom: 2px;
+    }
+
+#wizbutsave {
+    margin-top: 5px;
+}
+
+#butTypeWiz {
+    height: 22px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.msgbot {
+    border-radius: 10px;
+    border-bottom-left-radius: 0px;
+    background-color: #49b9fb;
+    margin: 10px;
+    margin-right: 30px;
+    padding: 10px;
+    color: white;
+}
+
+.msguser {
+    border-radius: 10px;
+    border-bottom-right-radius: 0px;
+    background-color: #4fd73b;
+    margin: 10px;
+    margin-left: 30px;
+    padding: 10px;
+    color: white;
+}
+
+.prevbutton{
+    margin-top:2px;
+    border:2px solid white;
+    padding:2px;
+}

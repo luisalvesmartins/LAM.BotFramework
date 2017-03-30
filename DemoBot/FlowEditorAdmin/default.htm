@@ -1,0 +1,343 @@
+﻿<!DOCTYPE html>
+<HTML>
+<HEAD>
+    <title>Flow Editor</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="FlowEditor.css" type="text/css" />
+    <link rel="stylesheet" href="http://fontawesome.io/assets/font-awesome/css/font-awesome.css">
+    <script src="floweditorlib.js"></script>
+    <script src="floweditorcore.js"></script>
+    <script src="jquery-3.1.1.min.js"></script>
+</HEAD>
+<BODY id="myBody" style="overflow:hidden">
+    <div>
+        <div class=maintitle>Flow Editor</div>
+        <div id="tabs"></div>
+    </div>
+
+    <section id="home">
+        <div id="leftMenu" class="leftBar" onclick="Menu.Call()">
+            <div>File</div>
+            <div>
+                <button id="b_NEW" class="fa fa-file fl" aria-hidden="true" alt="New"></button>
+                <button id="b_LOAD" class="fa fa-folder-open-o fl" aria-hidden="true" alt="Load"></button>
+                <button id="b_SAVE" class="fa fa-floppy-o fl" aria-hidden="true" alt="Save"></button>
+            </div>
+            <hr />
+            <div>Navigate</div>
+            <button id="b_LU">LUIS</button>
+            <button id="b_CA">Choice<br />Action</button>
+            <div>Prompt</div>
+            <!--<button id="b_HE">Hero</button>-->
+            <button id="b_CH">Choice</button>
+            <button id="b_TE">Text</button>
+            <div>Message</div>
+            <div>
+                <button id="b_Ms" class="fa fa-info fl" alt="Message"></button>
+                <button id="b_ME" class="fa fa-flag-checkered fl" alt="EndMessage"></button>
+            </div>
+            <div>Special</div>
+            <button id="b_AP">API</button>
+            <button id="b_SU">SUB</button>
+            <button id="b_EN">Expression</button>
+            <hr />
+            <div>Menu</div>
+            <button id="b_USER">MENU</button>
+            <hr />
+            <button id="b_STAT">STAT</button>
+        </div>
+        <div id="cnvContainer" class="cnvContainer">
+            <canvas id="cnv" width="3000" height="3000"></canvas>
+            <div id="divload" style="display:none;font:10pt Verdana;position:absolute;top:150px;left:100px;padding:20px;background-color:aliceblue;">
+                Load an Existing Scenario:<select id="scenarios" onchange="Scenario.Select();"></select><br />
+                <textarea id="loadJS" rows="20" cols="80"></textarea><br />
+                <button onclick="Scenario.LoadJson()">LOAD</button>
+            </div>
+
+        </div>
+        <div id="proppanel" class="propContainer">
+            <div id="divwizardmain">
+                <input type="hidden" id="prop_id" />
+                <div class="regheader">Properties</div>
+                <div id="divwizard">
+                    <div id="propdivnodename">
+                        <div>Node name</div>
+                        <input id="prop_nodename" onkeyup="SideBar.PropChange()" />
+                    </div>
+                    <div class="clear"></div>
+                    <div id="propdivq">
+                        <div id="propqtext">Question</div>
+                        <textarea id="prop_q" style="width:230px" rows="6" onkeyup="SideBar.TextChange()"></textarea>
+                    </div>
+                    <div id="propdivsub" style="display:none">
+                        <div>Routine</div>
+                        <select id="prop_sub" onchange="prop_q.value = prop_sub.value;SideBar.TextChange()"></select>
+                    </div>
+                    <div>
+                        <div>Type</div>
+                        <div>
+                            <select class="fl" id="prop_type" onchange="SideBar.TypeChange()">
+                                <option value="API">API</option>
+                                <option value="Boolean">Boolean</option>
+                                <option value="Choice">Choice</option>
+                                <option value="ChoiceAction">ChoiceAction</option>
+                                <option value="Expression">Expression</option>
+                                <option value="Integer">Integer</option>
+                                <option value="LUIS">LUIS</option>
+                                <option value="Message">Message</option>
+                                <option value="MessageEnd">MessageEnd</option>
+                                <option value="QnAMaker">QnAMaker</option>
+                                <option value="Search">Search</option>
+                                <option value="SUB">SUB</option>
+                                <option value="Text">Text</option>
+
+                            </select>
+                            <button class="fl" id="butTypeWiz" onclick="SideBar.TypeWiz()">Wiz</button>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                    <div style="display:none">
+                        <div>Var(optional)</div>
+                        <input type="text" id="prop_var" />
+                    </div>
+                    <div id="divmax" style="display:none">
+                        <div>Max</div>
+                        <input type="text" id="prop_max" />
+                    </div>
+                    <div id="propdivoptions" style="display:none">
+                        <div>Options</div>
+                        <input type="text" id="prop_options" onkeyup="SideBar.PropChange()" />
+                    </div>
+                    <div id="divkeys" style="display:none">
+                        <div>ConnectionString</div>
+                        <input type="text" id="options" />
+                    </div>
+                    <div id="propdivlang" style="display:none">
+                        <div>Language Detection</div>
+                        <select id="prop_lang" onchange="SideBar.TextChange()">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div id="propdivbypassnode" style="display:block">
+                        <div>Bypass question if var is filled?</div>
+                        <select id="prop_bypass" onchange="SideBar.TextChange()">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+
+                    <!--<button id="propbutsave" onclick="SideBar.Save()">Save</button>-->
+                </div>
+                <button onclick="SideBar.DeleteElement()">Delete Element</button>
+            </div>
+            <div id="divpreview">
+                <div class="regheader">Preview</div>
+                <div id="prev_bot" class="msgbot">Bot Message</div>
+                <div id="prev_user" class="msguser">thank you</div>
+            </div>
+            <div id="divlink">
+                <div class="regheader">Link</div>
+                <div>
+                    Intent
+                </div>
+                <input type="text" id="prop_linktext" onkeyup="SideBar.LinkTextChange()" />
+                <hr />
+                <button onclick="SideBar.DeleteLink()">Delete Link</button>
+            </div>
+            <div id="divphrases" style="display:none">
+                <div class="regheader">Phrases</div>
+                <div id="phraseslist">
+                    <input type="text" id="prop_ph1" />
+                </div>
+                <button onclick="Phrases.Add();">+</button>
+            </div>
+        </div>
+
+        <div id="divsave" style="display:none">
+            <textarea id="tta" rows="30"></textarea>
+        </div>
+    </section>
+    <script>
+        var SCENARIOCODE = "TEST";
+
+        function LoadScenario() {
+            $.get("/api/log/LoadDefinition?ScenarioName=" + SCENARIOCODE, function (data) {
+                if (data != "") {
+                    $("#loadJS").val(data);
+                    Scenario.LoadJson()
+                }
+                else {
+                    alert("NO SCENARIO LOADED YET");
+                }
+            });
+        }
+        function SaveScenario() {
+            var s = $("#tta").val();
+            $.post("/api/log/SaveDefinition", { Definition: s, Version:"A0", Scenario:SCENARIOCODE }, function (data) {
+                if (data != "") {
+                    alert("Error:" + data)
+                }
+                else {
+                    alert("BOT Saved");
+                }
+            }, "json");
+        }
+
+        var prevMenu = "";
+        function testMenu() {
+            if (prevMenu == "" || leftMenu.innerHTML == prevMenu) {
+                prevMenu = leftMenu.innerHTML;
+                var s = "";
+                s += '<div>USER MENU</div>'+
+                    '<button id="b_PFLOW1">ENTITY</button>' +
+                    '<button id="b_PFLOW2">DECISION</button><hr/>' +
+                    '<div>Menu</div><button id="b_USER">BACK</button>';
+                leftMenu.innerHTML = s;
+            }
+            else
+                leftMenu.innerHTML = prevMenu;
+
+        }
+        function testP1() {
+            var i = Cnv.Nodes.length;
+            Cnv.NodesAdd(125, 30, 200, 40, "#!VAR1!#>0", "Expression", Cnv.CurrentSub, "N" + i, "");
+            Cnv.NodesAdd(22, 130, 200, 40, "Question 1?", "Text", Cnv.CurrentSub, "VAR1", "");
+            Cnv.NodesAdd(200, 230, 200, 40, "\"#!VAR2!#\"", "Expression", Cnv.CurrentSub, "N" + (i + 2), "");
+            Cnv.NodesAdd(22, 330, 200, 40, "Question 2?", "Text", Cnv.CurrentSub, "VAR2", "");
+            Cnv.NodesAdd(230, 430, 200, 40, "You selected #!VAR1!# and #!VAR2!#", "Message", Cnv.CurrentSub, "N" + (i + 4), "");
+            Cnv.Links[Cnv.Links.length] = new Link(i, i + 1, "Yes");
+            Cnv.Links[Cnv.Links.length] = new Link(i, i + 2, "No");
+            Cnv.Links[Cnv.Links.length] = new Link(i+1, i + 2, "");
+            Cnv.Links[Cnv.Links.length] = new Link(i+2, i + 3, "Yes");
+            Cnv.Links[Cnv.Links.length] = new Link(i+2, i + 4, "No");
+            Cnv.Links[Cnv.Links.length] = new Link(i+3, i + 4, "");
+        }
+        function testP2() {
+            var i = Cnv.Nodes.length;
+            Cnv.NodesAdd(145, 30, 200, 30, "Choice Text", "Choice", Cnv.CurrentSub, "N" + i, "");
+            Cnv.NodesAdd(30, 130, 200, 30, "Message Yes", "Message", Cnv.CurrentSub, "N" + (i + 1), "");
+            Cnv.NodesAdd(260, 130, 200, 30, "Message No", "Message", Cnv.CurrentSub, "N" + (i + 2), "");
+            Cnv.Links[Cnv.Links.length] = new Link(i, i + 1, "Yes");
+            Cnv.Links[Cnv.Links.length] = new Link(i, i + 2, "No");
+        }
+
+        var Menu = {
+            Draw: function (sub) {
+                if (sub == "+") {
+                    var a = prompt("Process name:", "proc1");
+                    Cnv.Regions[Cnv.Regions.length] = a;
+                    Cnv.TabMenu(a);
+                    sub = a;
+                }
+                Cnv.TabMenu(sub);
+                UserInput.ElementBSelected = -1;
+                UserInput.ElementSelected = -1;
+                UserInput.moving = false;
+                Cnv.CurrentSub = sub;
+                Cnv.Draw();
+            },
+            Call: function () {
+                var nodename = "NODE" + Cnv.Nodes.length;
+                var nx = 30 + cnvContainer.scrollLeft;// + cnv.offsetLeft;
+                var ny = 30 + cnvContainer.scrollTop;// + cnv.offsetTop;
+
+                switch (event.srcElement.id) {
+                    case "b_USER":
+                        testMenu();
+                        break;
+                    case "b_PFLOW1":
+                        testP1();
+                        break;
+                    case "b_PFLOW2":
+                        testP2();
+                        break;
+                    case "b_LOAD":
+                        LoadScenario();
+                        //$("#divload").show();
+                        break;
+                    case "b_STAT":
+                        Scenario.showStat();
+                        break;
+                    case "b_NEW":
+                        Cnv.Nodes = new Array();
+                        Cnv.Links = new Array();
+                        Cnv.Regions = ["main"];
+                        Cnv.TabMenu("main");
+                        var i = 0;
+                        Cnv.NodesAdd(30, 30, 200, 30, "Hello, I am your new bot.", "Message", Cnv.CurrentSub, "N" + i, "");
+                        Cnv.NodesAdd(30, 130, 200, 30, "What is your name?", "Text", Cnv.CurrentSub, "NAME", "");
+                        Cnv.NodesAdd(30, 230, 200, 30, "Hello #!NAME!#. Goodbye!", "MessageEnd", Cnv.CurrentSub, "N" + (i + 1), "");
+                        Cnv.Links[Cnv.Links.length] = new Link(i, i + 1, "");
+                        Cnv.Links[Cnv.Links.length] = new Link(i+1, i + 2, "");
+
+                        Cnv.Draw();
+                        break;
+                    case "b_SAVE":
+                        Scenario.Transform();
+                        SaveScenario();
+                        break;
+                    case "b_EN": //ENITTY
+                        Cnv.NodesAdd(nx, ny, 200, 30, "#!Expression!#", "Expression", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_AP": //API
+                        Cnv.NodesAdd(nx, ny, 200, 30, "address", "API", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_SU": //SUB
+                        Cnv.NodesAdd(nx, ny, 200, 30, Cnv.Regions[0], "SUB", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_LU":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "LUIS", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_CA":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "ChoiceAction", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_CH":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "Choice", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_IN":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "Integer", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_HE":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "Hero", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_QA":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "QnA", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_SE":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "Search", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_TE":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "Text", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_Ms":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "Message", Cnv.CurrentSub, nodename, "");
+                        break;
+                    case "b_ME":
+                        Cnv.NodesAdd(nx, ny, 200, 30, "Edit this text", "MessageEnd", Cnv.CurrentSub, nodename, "");
+                        break;
+                }
+                Cnv.Draw();
+            }
+        }
+
+        window.onload = init();
+
+        var JsonB;
+
+        function init() {
+            cnv.onmousemove = UserInput.mousemove;
+            cnv.onmouseup = UserInput.mouseup;
+            cnv.onmousedown = UserInput.mousedown;
+            myBody.onkeyup = UserInput.keyup;
+
+            var select = document.getElementById("type");
+
+            //Scenario.LoadSelect();
+            Cnv.Init("cnv");
+            Cnv.Draw();
+            LoadScenario();
+        }
+    </script>
+</BODY>
+</HTML>
