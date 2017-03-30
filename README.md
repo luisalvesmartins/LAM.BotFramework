@@ -76,7 +76,7 @@ This is the example of the json data format that is stored in the Azure Storage
 ]
 ```
 it is the equivalent to this flow chart in the flow editor:
-![alt text](docs/chart.png "Demo Flow")
+![alt text](LAM.BotFramework/docs/chart.png "Demo Flow")
 Note that all the end steps need to be of type "MessageEnd"
 
 ### Code
