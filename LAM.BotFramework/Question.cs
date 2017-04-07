@@ -88,6 +88,10 @@ namespace LAM.BotFramework
 
         public async Task Initialize(string JSon)
         {
+            await this.Initialize(JSon, null);
+        }
+        public async Task Initialize(string JSon, string Message)
+        {
             this.LogToken = Global.ScenarioName;
             this.TranslatorToken = Translator.GetToken();
 
@@ -100,10 +104,10 @@ namespace LAM.BotFramework
             QuestionRow NextQ = JsonConvert.DeserializeObject<List<QuestionRow>>(JSon)[0];
 
             Load(NextQ);
-            await this.Execute(_context);
+            await this.Execute(_context,Message);
         }
 
-        public async Task Execute(IDialogContext context)
+        public async Task Execute(IDialogContext context, string Message)
         {
             Dictionary<string, string> D = this.Properties;
             if (CurrentQuestionRow.BypassNode=="Yes")
@@ -143,7 +147,7 @@ namespace LAM.BotFramework
             }
             #endregion
 
-            //string s1 = "[{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]},{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]}]";
+            //FOR TESTING:
             //string s = "[{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]}]";
             //CurrentQuestionRow.QuestionText = s;
 
@@ -167,6 +171,36 @@ namespace LAM.BotFramework
                 bHasHero = true;
             }
             #endregion
+
+
+            if (!string.IsNullOrEmpty(Message) && CurrentQuestionRow.BypassNode=="Yes")
+            {
+                switch (CurrentQuestionRow.QuestionType)
+                {
+                    case "LUIS":
+                        string resultT = Message;
+                        string ResultTranslated = resultT;
+                        if (language != "en")
+                        {
+                            ResultTranslated = Translator.Translate(TranslatorToken, resultT, language, "en");
+                        }
+
+                        await ProcessResponseLUIS(context, ResultTranslated);
+                        break;
+                    case "QnAMaker":
+                        await ProcessResponseQnAMaker(context, Message);
+                        break;
+                    case "Search":
+                        await ProcessResponseSearch(context, Message);
+                        break;
+                    default:
+                        await ProcessResponse(context, Message,null);
+                        break;
+                }
+            }
+            else
+            {
+
 
             ConversationLog.Log(context, "BOT", LogPrompt, LogToken, CurrentQuestion);
 
@@ -357,16 +391,31 @@ namespace LAM.BotFramework
                     }
                     break;
                 case "Search":
-                    if (bHasHero)
+                    string sJsonS = CurrentQuestionRow.Options.Replace("'", "\"");
+                    OptionsSearch OS = JsonConvert.DeserializeObject<OptionsSearch>(sJsonS);
+                    if (string.IsNullOrEmpty(OS.QSearch))
                     {
-                        context.Wait(ProcessResponseSearchBypass);
+                        if (bHasHero)
+                        {
+                            context.Wait(ProcessResponseSearchBypass);
+                        }
+                        else
+                            PromptDialog.Text(context,
+                                                MessageLoopSearch,
+                                                PromptTranslated,
+                                                RetryPrompt
+                                                );
                     }
                     else
-                        PromptDialog.Text(context,
-                                            MessageLoopSearch,
-                                            PromptTranslated,
-                                            RetryPrompt
-                                            );
+                    {
+                        string result = KeyReplace(Global.PragmaOpen + OS.QSearch + Global.PragmaClose);
+                            if (result.IndexOf("{") == 0)
+                            {
+                                LUISresultv2 LRV2 = JsonConvert.DeserializeObject<LUISresultv2>(result);
+                                result = LRV2.query;
+                            }
+                            await ProcessResponseSearch(context, result);
+                    }
                     break;
                 case "Choice":
                     string[] op = CurrentQuestionRow.Options.Split(',');
@@ -477,7 +526,8 @@ namespace LAM.BotFramework
                 default:
                     break;
             }
-            #endregion
+                #endregion
+            }
         }
 
         private string KeyReplace(string text)
@@ -747,7 +797,7 @@ namespace LAM.BotFramework
                 //QDone(this, new QuestionEventArgs(Q.CurrentQuestion));
                 //NEXT QUESTION
                 Q.Load(LQJ[Q.CurrentQuestion]);
-                await Q.Execute(context);
+                await Q.Execute(context,null);
             }
         }
         protected async Task ProcessResponseQnAMaker(IDialogContext context, string result)
@@ -792,7 +842,7 @@ namespace LAM.BotFramework
                 //QDone(this, new QuestionEventArgs(Q.CurrentQuestion));
 
                 Q.Load(LQJ[Q.CurrentQuestion]);
-                await Q.Execute(context);
+                await Q.Execute(context,null);
             }
         }
         protected async Task ProcessResponseSearch(IDialogContext context, string result)
@@ -814,13 +864,16 @@ namespace LAM.BotFramework
             parameters =
                 new SearchParameters()
                 {
-                    Select = new[] { OS.FieldQ, OS.FieldA }
+                    Select = new[] { OS.FieldQ, OS.FieldA },
+                    HighlightFields = new[] { OS.FieldQ }
                 };
 
             ISearchIndexClient indexClient = serviceClient.Indexes.GetClient(OS.Index);
             DocumentSearchResult<object> searchResults = indexClient.Documents.Search<object>(result, parameters);
             int nResults = 0;
             SearchResult<object> searchResult;
+
+
             int i = 0;
             int Total = 0;
             while (i < searchResults.Results.Count)
@@ -839,38 +892,69 @@ namespace LAM.BotFramework
                 else
                     sMsg += "one entry ";
             }
-            sMsg += "with score > 0.25";
+            //sMsg += "with score > 0.25";
             if (Total > int.Parse(OS.MaxResults))
                 sMsg += " Showing the first " + OS.MaxResults + ".";
             await context.PostAsync(sMsg);
 
-            var replyMessage = context.MakeMessage();
 
+            var replyMessage0 = context.MakeMessage();
             List<Attachment> LA = new List<Attachment>();
+            if (searchResults.Results.Count > 0)
+            {
+                var item = searchResults.Results[0].Highlights;
+                var s = item["content"];
+                foreach (var item2 in s)
+                {
+                    string item3 = item2.Replace("<em>", "**").Replace("</em>", "**");
+                    Attachment A1 = new HeroCard()
+                    {
+                        Text = item3
+                        //Buttons = new List<CardAction>() { CA }
+                    }
+                    .ToAttachment();
+                    LA.Add(A1);
+                }
+                replyMessage0.Attachments = LA;
+                await context.PostAsync(replyMessage0);
+            }
+
+            LA = new List<Attachment>();
+            var replyMessage = context.MakeMessage();
             while (nResults < int.Parse(OS.MaxResults) && nResults < searchResults.Results.Count)
             {
                 searchResult = searchResults.Results[nResults];
                 if (searchResult.Score > 0.25)
                 {
-                    Dictionary<string, string> LC = JsonConvert.DeserializeObject<Dictionary<string, string>>(searchResult.Document.ToString());
+
+                    Dictionary<string, object> LC = JsonConvert.DeserializeObject<Dictionary<string, object>>(searchResult.Document.ToString());
 
                     CardAction CA = new CardAction(ActionTypes.ImBack, searchResult.Score.ToString(), null, "value");
                     //replyMessage.Text = "**" + LC[OS.FieldQ] + "**";
+                    int mT = LC[OS.FieldA].ToString().Length;
+                    int mC = LC[OS.FieldQ].ToString().Length;
+                    if (mT > 200)
+                        mT = 200;
+                    if (mC > 200)
+                        mC = 200;
                     Attachment A = new HeroCard()
                     {
-                        Text = "**" + LC[OS.FieldA] + "**",
-                        Subtitle = LC[OS.FieldQ],
-                        Buttons = new List<CardAction>() { CA }
+                        Text = "**" + LC[OS.FieldA].ToString().Substring(0,mT) + "**",
+                        Subtitle = LC[OS.FieldQ].ToString().Substring(0,mC),
+                        //Buttons = new List<CardAction>() { CA }
                     }
                     .ToAttachment();
-                    LA.Add(A);
+                    //LA.Add(A);
                     //await context.PostAsync("Score:" + searchResult.Score);
 
                 }
                 nResults++;
             }
-            replyMessage.Attachments = LA;
-            await context.PostAsync(replyMessage);
+            if (LA.Count > 0)
+            {
+                replyMessage.Attachments = LA;
+                await context.PostAsync(replyMessage);
+            }
 
             //await context.PostAsync("**" + (nResults + 1) + ". " + LC[OS.FieldQ] + "**\n\n" + LC[OS.FieldA]);
             //foreach (var kbItem in kbResponseList)
@@ -905,7 +989,7 @@ namespace LAM.BotFramework
                 //QDone(this, new QuestionEventArgs(Q.CurrentQuestion));
 
                 Q.Load(LQJ[Q.CurrentQuestion]);
-                await Q.Execute(context);
+                await Q.Execute(context,null);
             }
         }
         protected async Task ProcessResponseLUIS(IDialogContext context, string result)
@@ -996,7 +1080,7 @@ namespace LAM.BotFramework
 
                     Q.CurrentQuestion = currentStepID;
                     Q.Load(LQJ[currentStepID]);
-                    await Q.Execute(context);
+                    await Q.Execute(context,null);
                 }
             }
         }

@@ -250,6 +250,12 @@ var SideBar = {
                 $("#propdivlang").hide();
                 $("#propdivbypass").hide();
                 break;
+            case "QnAMaker":
+                $("#butTypeWiz").show();
+                break;
+            case "Search":
+                $("#butTypeWiz").show();
+                break;
             case "SUB":
                 //prop_sub
                 $("#divpreview").hide();
@@ -282,19 +288,34 @@ var SideBar = {
                 $('#prop_options').val(stId + "?subscription-key=" + stSK);
                 break;
             case 'Search':
-                var stSN = prompt("Please enter AzureSearch ServiceName (string)", "");
-                var stSK = prompt("Please enter AzureSearch Key (string)", "");
-                var stIn = prompt("Please enter AzureSearch Index (string)", "");
-                var stQ = prompt("Please enter AzureSearch FieldQ (string)", "");
-                var stA = prompt("Please enter AzureSearch FieldA (string)", "");
-                $('#prop_options').val("{'ServiceName':'" + stSN + "', 'Key':'" + stSK + "', 'Index':'" + stIn + "', 'FieldQ':'" + stQ + "','FieldA':'" + stA + "', 'MaxResults':'3'}");
+                var o = null;
+                try {
+                    o = JSON.parse($('#prop_options').val().replace(/'/g, '"'));
+                } catch (e) {
+                    o = { ServiceName: "", Key: "", Index: "", FieldQ: "", FieldA: "", QSearch: "" };
+                }
+
+                var stSN = prompt("Please enter AzureSearch ServiceName (string)", o.ServiceName);
+                var stSK = prompt("Please enter AzureSearch Key (string)", o.Key);
+                var stIn = prompt("Please enter AzureSearch Index (string)", o.Index);
+                var stQ = prompt("Please enter AzureSearch FieldQ (string)", o.FieldQ);
+                var stA = prompt("Please enter AzureSearch FieldA (string)", o.FieldA);
+                var stQS = prompt("Please enter QSearch (string,leave blank if you don't know how to use,it enables automatic search based on a previous variable)", o.QSearch);
+                $('#prop_options').val("{'ServiceName':'" + stSN + "', 'Key':'" + stSK + "', 'Index':'" + stIn + "', 'FieldQ':'" + stQ + "','FieldA':'" + stA + "', 'QSearch':'" + stQS + "', 'MaxResults':'3'}");
                 break;
             case 'QnAMaker':
-                var stId = prompt("Please enter QnAMaker Id (GUID)", "");
-                var stSK = prompt("Please enter QnAMaker Key (string)", "");
-                var stMS = prompt("Please enter MinScore (string)", "3");
-                var stQS = prompt("Please enter QSearch (string,leave blank if you don't know how to use,it enables automatic search based on a previous variable)", "");
-                var stNF = prompt("Please enter NotFound Message (string)", "Did not find an Answer to your Question");
+                var q = null;
+                try {
+                    q = JSON.parse($('#prop_options').val().replace(/'/g, '"'));
+                } catch (e) {
+                    q = { KBId: "", Key: "", MinScore: "3", QSearch: "", NotFoundMessage: "Did not find an Answer to your Question" };
+                }
+
+                var stId = prompt("Please enter QnAMaker Id (GUID)", q.KBId);
+                var stSK = prompt("Please enter QnAMaker Key (string)", q.Key);
+                var stMS = prompt("Please enter MinScore (string)", q.MinScore);
+                var stQS = prompt("Please enter QSearch (string,leave blank if you don't know how to use,it enables automatic search based on a previous variable)", q.QSearch);
+                var stNF = prompt("Please enter NotFound Message (string)", q.NotFoundMessage);
                 $('#prop_options').val("{'KBId':'" + stId + "', 'Key':'" + stSK + "', 'MinScore':'" + stMS + "', 'QSearch':'" + stQS + "', 'NotFoundMessage':'" + stNF + "'}");
                 break;
         }

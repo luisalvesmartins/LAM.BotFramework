@@ -20,6 +20,7 @@ namespace LAM.BotFramework.Dialogs
 
         public async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> argument)
         {
+            IMessageActivity A = await argument;
             string JSon = Scenario.LoadRecentScenario(Global.ScenarioName);
             if (string.IsNullOrEmpty(JSon))
             {
@@ -30,7 +31,7 @@ namespace LAM.BotFramework.Dialogs
             else
             {
                 Question Q = new Question(context);
-                await Q.Initialize(JSon);
+                await Q.Initialize(JSon, A.Text);
             }
         }
     }

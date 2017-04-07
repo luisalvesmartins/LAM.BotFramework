@@ -47,6 +47,7 @@ namespace LAM.BotFramework
         public string FieldQ { get; set; }
         public string FieldA { get; set; }
         public string MaxResults { get; set; }
+        public string QSearch { get; set; } //If exists will use the content of this variable for Search
     }
 
     public class OptionsQnAMaker
