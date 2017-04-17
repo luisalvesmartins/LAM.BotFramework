@@ -90,7 +90,7 @@
                                 <option value="Search">Search</option>
                                 <option value="SUB">SUB</option>
                                 <option value="Text">Text</option>
-
+                                <option value="ResetAllVars">ResetAllVars</option>
                             </select>
                             <button class="fl" id="butTypeWiz" onclick="SideBar.TypeWiz()">Wiz</button>
                         </div>
@@ -159,7 +159,7 @@
         </div>
     </section>
     <script>
-        var SCENARIOCODE = "TEST";
+        var SCENARIOCODE = "";
 
         function LoadScenario() {
             $.get("/api/log/LoadDefinition?ScenarioName=" + SCENARIOCODE, function (data) {
@@ -253,8 +253,10 @@
                         testP2();
                         break;
                     case "b_LOAD":
-                        LoadScenario();
-                        //$("#divload").show();
+                        if (SCENARIOCODE == null)
+                            $("#divload").show();
+                        else
+                            LoadScenario();
                         break;
                     case "b_STAT":
                         Scenario.showStat();
@@ -275,7 +277,24 @@
                         break;
                     case "b_SAVE":
                         Scenario.Transform();
-                        SaveScenario();
+                        if (SCENARIOCODE == null) {
+                            divsave.style.display = "block";
+                            document.getElementById("tta").select();
+                            var copied;
+                            try {
+                                copied = document.execCommand('copy');
+                            }
+                            catch (ex) {
+                                divsave.style.display = "none";
+                                alert("Could not access the clipboard");
+                            }
+                            divsave.style.display = "none";
+                            alert("BOT definition copied to the clipboard.");
+
+                        }
+                        else {
+                            SaveScenario();
+                        }
                         break;
                     case "b_EN": //ENITTY
                         Cnv.NodesAdd(nx, ny, 200, 30, "#!Expression!#", "Expression", Cnv.CurrentSub, nodename, "");
@@ -325,19 +344,40 @@
 
         var JsonB;
 
+        function getUrlParameter(sParam) {
+            var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+                sURLVariables = sPageURL.split('&'),
+                sParameterName,
+                i;
+
+            for (i = 0; i < sURLVariables.length; i++) {
+                sParameterName = sURLVariables[i].split('=');
+
+                if (sParameterName[0] === sParam) {
+                    return sParameterName[1] === undefined ? true : sParameterName[1];
+                }
+            }
+            return null;
+        };
+
+
         function init() {
             cnv.onmousemove = UserInput.mousemove;
             cnv.onmouseup = UserInput.mouseup;
             cnv.onmousedown = UserInput.mousedown;
             myBody.onkeyup = UserInput.keyup;
 
-            var select = document.getElementById("type");
-
-            //Scenario.LoadSelect();
             Cnv.Init("cnv");
             Cnv.Draw();
-            LoadScenario();
+
+            SCENARIOCODE = getUrlParameter("scenario");
+            if (SCENARIOCODE == null) {
+                Scenario.LoadSelect();
+            }
+            else
+                LoadScenario();
         }
+
     </script>
 </BODY>
 </HTML>

@@ -632,6 +632,10 @@ var Link = function (from, to, text) {
                     ym = Cnv.Nodes[this.from].DDown;
                 }
             }
+            if (ym < y1 && ym < y2) {
+                ym = (y1 + y1) / 2;
+                Cnv.Nodes[this.from].DDown = ym;
+            }
             this.yt = ym - 20;
             this.segmentAdd(x1, y1, x1, ym, "v");
             this.segmentAdd(x1, ym, x2, ym, "h");
