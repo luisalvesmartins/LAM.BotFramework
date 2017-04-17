@@ -8,7 +8,7 @@
     <owners>$author$</owners>
     <projectUrl>https://github.com/luisalvesmartins/LAMBotFramework</projectUrl>
     <description>Framework to build datadriven bots using the Bot Framework</description>
-    <releaseNotes>Version 1.0.0.5</releaseNotes>
+    <releaseNotes>Version 1.0.0.6</releaseNotes>
     <copyright>Copyright 2017</copyright>
     <tags>Bot Framework</tags>
   </metadata>

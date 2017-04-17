@@ -13,7 +13,7 @@ namespace LAM.BotFramework.ServiceConnectors
         const string LUISURLv2 = "https://api.projectoxford.ai/luis/v2.0/apps/";
         public static async Task<string> getLUISresult(string URL, string Query)
         {
-            string response=await REST.Get(LUISURLv2 + URL + "&q=" + Query);
+            string response=await REST.Get(LUISURLv2 + URL + "&q=" + Query,false);
             return response;
         }
     }

@@ -66,7 +66,7 @@ namespace LAM.BotFramework.Entities
                 CL.Text = message;
                 CL.CurrentQuestion = CurrentQuestion;
                 CL.Scenario = Scenario;
-                CL.SaveAsync(Global.tableLog);
+                CL.Save(Global.tableLog);
             }
         }
     }

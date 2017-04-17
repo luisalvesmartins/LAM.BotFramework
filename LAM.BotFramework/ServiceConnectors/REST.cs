@@ -1,4 +1,5 @@
 ﻿using LAM.BotFramework.Entities;
+using Microsoft.IdentityModel.Protocols;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -17,6 +18,10 @@ namespace LAM.BotFramework.ServiceConnectors
         public static async Task<BotProps> Post(string URL, BotProps postData)
         {
             Uri U = new Uri(URL);
+            if (Global.DebugServicesURL != "")
+            {
+                U = new Uri(URL.Replace(U.AbsolutePath, Global.DebugServicesURL));
+            }
             string s = U.PathAndQuery;
             HttpClient client = new HttpClient();
             client.BaseAddress = U;
@@ -34,9 +39,15 @@ namespace LAM.BotFramework.ServiceConnectors
         /// </summary>
         /// <param name="URL"></param>
         /// <returns></returns>
-        public static async Task<string> Get(string URL)
+        public static async Task<string> Get(string URL, bool Debugable)
         {
             HttpClient client = new HttpClient();
+            if (Debugable && Global.DebugServicesURL != "")
+            {
+                Uri U = new Uri(URL);
+                int p = URL.IndexOf(U.Host) + U.Host.Length;
+                URL = Global.DebugServicesURL + URL.Substring(p);
+            }
             return await client.GetStringAsync(URL);
         }
     }

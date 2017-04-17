@@ -22,7 +22,6 @@ namespace LAM.BotFramework
         [NonSerialized]
         IDialogContext _context;
         [NonSerialized]
-        string TranslatorToken="";
         public string LogToken = "";
         public string RetryPrompt { get; set; }
         public int CurrentQuestion
@@ -93,7 +92,6 @@ namespace LAM.BotFramework
         public async Task Initialize(string JSon, string Message)
         {
             this.LogToken = Global.ScenarioName;
-            this.TranslatorToken = Translator.GetToken();
 
             //this.LogToken = LogToken;
             StackReset("main");
@@ -112,18 +110,19 @@ namespace LAM.BotFramework
             Dictionary<string, string> D = this.Properties;
             if (CurrentQuestionRow.BypassNode=="Yes")
             {
+                //GET VARIABLE NAME
                 string value = "";
                 if (D.ContainsKey(CurrentQuestionRow.NodeName.ToLower()))
                 {
                     value = D[CurrentQuestionRow.NodeName.ToLower()];
-                }
-                if (!string.IsNullOrEmpty(value))
-                {
-                    await ProcessResponse(context, value, null);
-                    return;
+                    //IF EXISTS, PROCESS IT
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        await ProcessResponse(context, value, null);
+                        return;
+                    }
                 }
             }
-            string language = GetLanguage(context);
 
             #region KEY REPLACEMENT
             //REPLACE KEYS STATED WITH PragmaOpen and PragmaClose
@@ -137,15 +136,19 @@ namespace LAM.BotFramework
             #endregion
 
             #region TRANSLATION
+
+            string language = GetLanguage(context);
             string PromptTranslated = CurrentQuestionRow.QuestionText;
-            if (CurrentQuestionRow.LangDet == "Yes")
+            if (CurrentQuestionRow.LangDet == "Yes" && !string.IsNullOrEmpty(Message))
             {
-                if (language != "en")
+                string detectedLanguage = Translator.Detect(Message);
+                if (detectedLanguage != language)
                 {
-                //    PromptTranslated = Translator.Translate(token, CurrentQuestionRow.QuestionText, "en", language);
+                    SetLanguage(context, detectedLanguage);
                 }
             }
             #endregion
+            PromptTranslated = Translator.Translate(CurrentQuestionRow.QuestionText, "en", language);
 
             //FOR TESTING:
             //string s = "[{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]}]";
@@ -172,9 +175,9 @@ namespace LAM.BotFramework
             }
             #endregion
 
-
-            if (!string.IsNullOrEmpty(Message) && CurrentQuestionRow.BypassNode=="Yes")
+            if (!string.IsNullOrEmpty(Message) && (CurrentQuestionRow.BypassNode=="Yes" || CurrentQuestion==0))
             {
+                #region HANDLE BYPASS
                 switch (CurrentQuestionRow.QuestionType)
                 {
                     case "LUIS":
@@ -182,7 +185,7 @@ namespace LAM.BotFramework
                         string ResultTranslated = resultT;
                         if (language != "en")
                         {
-                            ResultTranslated = Translator.Translate(TranslatorToken, resultT, language, "en");
+                            ResultTranslated = Translator.Translate(resultT, language, "en");
                         }
 
                         await ProcessResponseLUIS(context, ResultTranslated);
@@ -197,335 +200,338 @@ namespace LAM.BotFramework
                         await ProcessResponse(context, Message,null);
                         break;
                 }
+                #endregion
             }
             else
             {
+                ConversationLog.Log(context, "BOT", LogPrompt, LogToken, CurrentQuestion);
 
+                #region HANDLE QUESTIONTYPES
+                switch (CurrentQuestionRow.QuestionType)
+                {
+                    case "API":
+                        //GET
+                        string json = await REST.Get(CurrentQuestionRow.QuestionText, true);
 
-            ConversationLog.Log(context, "BOT", LogPrompt, LogToken, CurrentQuestion);
+                        Dictionary<string, string> list = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
 
-            #region HANDLE QUESTIONTYPES
-            switch (CurrentQuestionRow.QuestionType)
-            {
-                case "API":
-                    //GET
-                    string json = await REST.Get(CurrentQuestionRow.QuestionText);
+                        //READ RETURN DICTIONARY
+                        foreach (var item in list)
+                        {
+                            PropertiesStore(item.Key, item.Value);
+                        }
 
-                    Dictionary<string, string> list = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
-
-                    //READ RETURN DICTIONARY
-                    foreach (var item in list)
-                    {
-                        PropertiesStore(item.Key, item.Value);
-                    }
-
-                    await ProcessResponse(context, "", null);
-                    break;
-                case "APIFULL":
-                    //SET THE CONTEXT
-                    IMessageActivity dummyReply = context.MakeMessage();
-                    BotProps BP = new BotProps();
-                    BP.Properties = this.Properties;
-                    string st1 = this.CurrentQuestionRow.NextQ;
-                    int nq = 0;
-                    if (st1.IndexOf('{') > -1)
-                    {
-                        st1 = st1.Replace("'", "\"");
-                        List<NextQuestion> LNQ = JsonConvert.DeserializeObject<List<NextQuestion>>(st1);
-                        nq = LNQ[0].q;
-                    }
-                    else
-                    {
-                        nq = int.Parse(st1);
-                    }
-
-                    BP.NextQuestion = nq;
-                    BP.Scenario = this.Questions();
-                    //BP.ResCookie = new ConversationReference(dummyReply);
-                    BP.Result = "";
-
-                    int? NextQ = null;
-                    try
-                    {
-                        //CALL IT
-                        BP = await REST.Post(CurrentQuestionRow.QuestionText, BP);
-
-                        Properties = BP.Properties;
-                        if (BP.NextQuestion != nq)
-                            NextQ = BP.NextQuestion;
-                        if (BP.Scenario != null)
-                            this.SetScenario(JsonConvert.SerializeObject(BP.Scenario));
-                    }
-                    catch (Exception)
-                    {
-
-                    }
-
-                    await ProcessResponse(context, BP.Result, NextQ);
-                    break;
-                case "SUB":
-                    //ADD TO THE STACK
-                    StackPush(CurrentQuestionRow.Sub, this.CurrentQuestion);
-                    //MOVE TO THE FIRST OF THE SUB
-                    //                    GOTO CurrentQuestionRow.options
-                    int nextq = int.Parse(CurrentQuestionRow.Options);
-                    //AT END OF THE SUB, RETURN TO THE STACK
-                    await ProcessResponse(context, "", nextq);
-                    break;
-                case "Expression":
-                    string sRes = "Yes";
-                    if (CurrentQuestionRow.QuestionText.IndexOf(Global.PragmaOpen) > -1 && CurrentQuestionRow.QuestionText.IndexOf(Global.PragmaClose) > -1)
-                    {
-                        sRes = "No";
-                    }
-                    else
-                    {
-                        var result = CSharpScript.EvaluateAsync(CurrentQuestionRow.QuestionText).Result;
-                        if (result.GetType().Name == "String")
-                            sRes = "Yes";
+                        await ProcessResponse(context, "", null);
+                        break;
+                    case "APIFULL":
+                        //SET THE CONTEXT
+                        IMessageActivity dummyReply = context.MakeMessage();
+                        BotProps BP = new BotProps();
+                        BP.Properties = this.Properties;
+                        string st1 = this.CurrentQuestionRow.NextQ;
+                        int nq = 0;
+                        if (st1.IndexOf('{') > -1)
+                        {
+                            st1 = st1.Replace("'", "\"");
+                            List<NextQuestion> LNQ = JsonConvert.DeserializeObject<List<NextQuestion>>(st1);
+                            nq = LNQ[0].q;
+                        }
                         else
                         {
-                            if ((bool)result)
+                            nq = int.Parse(st1);
+                        }
+
+                        BP.NextQuestion = nq;
+                        BP.Scenario = this.Questions();
+                        //BP.ResCookie = new ConversationReference(dummyReply);
+                        BP.Result = "";
+
+                        int? NextQ = null;
+                        try
+                        {
+                            //CALL IT
+                            BP = await REST.Post(CurrentQuestionRow.QuestionText, BP);
+
+                            Properties = BP.Properties;
+                            if (BP.NextQuestion != nq)
+                                NextQ = BP.NextQuestion;
+                            if (BP.Scenario != null)
+                                this.SetScenario(JsonConvert.SerializeObject(BP.Scenario));
+                        }
+                        catch (Exception)
+                        {
+
+                        }
+
+                        await ProcessResponse(context, BP.Result, NextQ);
+                        break;
+                    case "SUB":
+                        //ADD TO THE STACK
+                        StackPush(CurrentQuestionRow.Sub, this.CurrentQuestion);
+                        //MOVE TO THE FIRST OF THE SUB
+                        //                    GOTO CurrentQuestionRow.options
+                        int nextq = int.Parse(CurrentQuestionRow.Options);
+                        //AT END OF THE SUB, RETURN TO THE STACK
+                        await ProcessResponse(context, "", nextq);
+                        break;
+                    case "Expression":
+                        string sRes = "Yes";
+                        if (CurrentQuestionRow.QuestionText.IndexOf(Global.PragmaOpen) > -1 && CurrentQuestionRow.QuestionText.IndexOf(Global.PragmaClose) > -1)
+                        {
+                            sRes = "No";
+                        }
+                        else
+                        {
+                            var result = CSharpScript.EvaluateAsync(CurrentQuestionRow.QuestionText).Result;
+                            if (result.GetType().Name == "String")
                                 sRes = "Yes";
                             else
-                                sRes = "No";
+                            {
+                                if ((bool)result)
+                                    sRes = "Yes";
+                                else
+                                    sRes = "No";
+                            }
                         }
-                    }
-                    await ProcessResponse(context, sRes, null);
-                    break;
-                case "LUIS":
-                    if (bHasHero)
-                    {
-                        context.Wait(ProcessResponseLUISBypass);
-                    }
-                    else
-                        PromptDialog.Text(context,
-                                            MessageLoopLUIS,
+                        await ProcessResponse(context, sRes, null);
+                        break;
+                    case "LUIS":
+                        if (bHasHero)
+                        {
+                            context.Wait(ProcessResponseLUISBypass);
+                        }
+                        else
+                            PromptDialog.Text(context,
+                                                MessageLoopLUIS,
+                                                PromptTranslated,
+                                                RetryPrompt);
+                        break;
+                    case "Text":
+                        if (bHasHero)
+                        {
+                            context.Wait(ProcessResponseBypass);
+                        }
+                        else
+                            PromptDialog.Text(context,
+                                            MessageLoop,
                                             PromptTranslated,
                                             RetryPrompt);
-                    break;
-                case "Text":
-                    if (bHasHero)
-                    {
-                        context.Wait(ProcessResponseBypass);
-                    }
-                    else
+                        break;
+                    case "Carousel":
+                        var reply = context.MakeMessage();
+                        reply.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                        //type,title,subtitle,text,urlforimage,urltoopen
+
+                        List<AttachmentCard> opat = JsonConvert.DeserializeObject<List<AttachmentCard>>(CurrentQuestionRow.Options.Replace("'", "\""));
+                        IList<Attachment> CardsAttachment = new List<Attachment>();
+
+                        foreach (AttachmentCard item in opat)
+                        {
+                            string actiontype = "";
+                            switch (item.action.type.ToLower())
+                            {
+                                case "openurl":
+                                    actiontype = ActionTypes.OpenUrl;
+                                    break;
+                                case "imback":
+                                    actiontype = ActionTypes.ImBack;
+                                    break;
+                                default:
+                                    actiontype = ActionTypes.OpenUrl;
+                                    break;
+                            }
+                            CardAction CA = new CardAction(actiontype, item.action.title, value: item.action.value);
+                            CardImage CI = new CardImage(url: item.imageURL);
+
+                            if (item.type == "Hero")
+                            {
+                                CardsAttachment.Add(
+                                    Bot.GetHeroCard(item.title, item.subtitle, item.text, new List<CardImage>() { CI }, new List<CardAction>() { CA })
+                                );
+                            }
+                            if (item.type == "Thumbnail")
+                            {
+                                CardsAttachment.Add(
+                                    Bot.GetThumbnailCard(item.title, item.subtitle, item.text, CI, CA)
+                                );
+                            }
+                        }
+                        reply.Attachments = CardsAttachment;
+                        await context.PostAsync(reply);
+                        //await ProcessResponse(context, "");
                         PromptDialog.Text(context,
-                                        MessageLoop,
-                                        PromptTranslated,
-                                        RetryPrompt);
-                    break;
-                case "Carousel":
-                    var reply = context.MakeMessage();
-                    reply.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-                    //type,title,subtitle,text,urlforimage,urltoopen
-
-                    List<AttachmentCard> opat = JsonConvert.DeserializeObject<List<AttachmentCard>>(CurrentQuestionRow.Options.Replace("'", "\""));
-                    IList<Attachment> CardsAttachment = new List<Attachment>();
-
-                    foreach (AttachmentCard item in opat)
-                    {
-                        string actiontype = "";
-                        switch (item.action.type.ToLower())
+                                            MessageLoop,
+                                            PromptTranslated,
+                                            RetryPrompt);
+                        break;
+                    case "QnAMaker":
+                        string sJson = CurrentQuestionRow.Options.Replace("'", "\"");
+                        OptionsQnAMaker OQ = JsonConvert.DeserializeObject<OptionsQnAMaker>(sJson);
+                        if (string.IsNullOrEmpty(OQ.QSearch))
                         {
-                            case "openurl":
-                                actiontype = ActionTypes.OpenUrl;
-                                break;
-                            case "imback":
-                                actiontype = ActionTypes.ImBack;
-                                break;
-                            default:
-                                actiontype = ActionTypes.OpenUrl;
-                                break;
-                        }
-                        CardAction CA = new CardAction(actiontype, item.action.title, value: item.action.value);
-                        CardImage CI = new CardImage(url: item.imageURL);
-
-                        if (item.type == "Hero")
-                        {
-                            CardsAttachment.Add(
-                                Bot.GetHeroCard(item.title, item.subtitle, item.text, new List<CardImage>() { CI }, new List<CardAction>() { CA })
-                            );
-                        }
-                        if (item.type == "Thumbnail")
-                        {
-                            CardsAttachment.Add(
-                                Bot.GetThumbnailCard(item.title, item.subtitle, item.text, CI, CA)
-                            );
-                        }
-                    }
-                    reply.Attachments = CardsAttachment;
-                    await context.PostAsync(reply);
-                    //await ProcessResponse(context, "");
-                    PromptDialog.Text(context,
-                                        MessageLoop,
-                                        PromptTranslated,
-                                        RetryPrompt);
-                    break;
-                case "QnAMaker":
-                    string sJson = CurrentQuestionRow.Options.Replace("'", "\"");
-                    OptionsQnAMaker OQ = JsonConvert.DeserializeObject<OptionsQnAMaker>(sJson);
-                    if (string.IsNullOrEmpty(OQ.QSearch))
-                    {
-                        if (bHasHero)
-                        {
-                            context.Wait(ProcessResponseQnABypass);
+                            if (bHasHero)
+                            {
+                                context.Wait(ProcessResponseQnABypass);
+                            }
+                            else
+                                PromptDialog.Text(context,
+                                                    MessageLoopQnAMaker,
+                                                    PromptTranslated,
+                                                    RetryPrompt
+                                                    );
                         }
                         else
-                            PromptDialog.Text(context,
-                                                MessageLoopQnAMaker,
-                                                PromptTranslated,
-                                                RetryPrompt
-                                                );
-                    }
-                    else
-                    {
-                        //the QSearch should have the Pragmas by default.
-                        string result = KeyReplace(Global.PragmaOpen + OQ.QSearch + Global.PragmaClose);
-                        if (result.IndexOf("{") == 0)
                         {
-                            LUISresultv2 LRV2 = JsonConvert.DeserializeObject<LUISresultv2>(result);
-                            result = LRV2.query;
-                        }
-                        await ProcessResponseQnAMaker(context, result);
-                    }
-                    break;
-                case "Search":
-                    string sJsonS = CurrentQuestionRow.Options.Replace("'", "\"");
-                    OptionsSearch OS = JsonConvert.DeserializeObject<OptionsSearch>(sJsonS);
-                    if (string.IsNullOrEmpty(OS.QSearch))
-                    {
-                        if (bHasHero)
-                        {
-                            context.Wait(ProcessResponseSearchBypass);
-                        }
-                        else
-                            PromptDialog.Text(context,
-                                                MessageLoopSearch,
-                                                PromptTranslated,
-                                                RetryPrompt
-                                                );
-                    }
-                    else
-                    {
-                        string result = KeyReplace(Global.PragmaOpen + OS.QSearch + Global.PragmaClose);
+                            //the QSearch should have the Pragmas by default.
+                            string result = KeyReplace(Global.PragmaOpen + OQ.QSearch + Global.PragmaClose);
                             if (result.IndexOf("{") == 0)
                             {
                                 LUISresultv2 LRV2 = JsonConvert.DeserializeObject<LUISresultv2>(result);
                                 result = LRV2.query;
                             }
-                            await ProcessResponseSearch(context, result);
-                    }
-                    break;
-                case "Choice":
-                    string[] op = CurrentQuestionRow.Options.Split(',');
-                    PromptDialog.Choice(context,
-                                            MessageLoop,
-                                            op,
-                                            PromptTranslated,
-                                            RetryPrompt,
-                                            promptStyle: PromptStyle.Auto);
-                    break;
-                case "ChoiceAction":
-                    string[] opA = CurrentQuestionRow.Options.Split(',');
-                    if (CurrentQuestionRow.Options == "")
-                    {
-                        string st = CurrentQuestionRow.NextQ;
-                        if (st != "" && st != null)
+                            await ProcessResponseQnAMaker(context, result);
+                        }
+                        break;
+                    case "Search":
+                        string sJsonS = CurrentQuestionRow.Options.Replace("'", "\"");
+                        OptionsSearch OS = JsonConvert.DeserializeObject<OptionsSearch>(sJsonS);
+                        if (string.IsNullOrEmpty(OS.QSearch))
                         {
-                            if (st.IndexOf('{') > -1)
+                            if (bHasHero)
                             {
-                                st = st.Replace("'", "\"");
-                                List<NextQuestion> LNQ = JsonConvert.DeserializeObject<List<NextQuestion>>(st);
-                                opA = new string[LNQ.Count];
-                                for (int i = 0; i < LNQ.Count; i++)
+                                context.Wait(ProcessResponseSearchBypass);
+                            }
+                            else
+                                PromptDialog.Text(context,
+                                                    MessageLoopSearch,
+                                                    PromptTranslated,
+                                                    RetryPrompt
+                                                    );
+                        }
+                        else
+                        {
+                            string result = KeyReplace(Global.PragmaOpen + OS.QSearch + Global.PragmaClose);
+                                if (result.IndexOf("{") == 0)
                                 {
-                                    opA[i] = LNQ[i].intent;
+                                    LUISresultv2 LRV2 = JsonConvert.DeserializeObject<LUISresultv2>(result);
+                                    result = LRV2.query;
+                                }
+                                await ProcessResponseSearch(context, result);
+                        }
+                        break;
+                    case "Choice":
+                        string[] op = CurrentQuestionRow.Options.Split(',');
+                        PromptDialog.Choice(context,
+                                                MessageLoop,
+                                                op,
+                                                PromptTranslated,
+                                                RetryPrompt,
+                                                promptStyle: PromptStyle.Auto);
+                        break;
+                    case "ChoiceAction":
+                        string[] opA = CurrentQuestionRow.Options.Split(',');
+                        if (CurrentQuestionRow.Options == "")
+                        {
+                            string st = CurrentQuestionRow.NextQ;
+                            if (st != "" && st != null)
+                            {
+                                if (st.IndexOf('{') > -1)
+                                {
+                                    st = st.Replace("'", "\"");
+                                    List<NextQuestion> LNQ = JsonConvert.DeserializeObject<List<NextQuestion>>(st);
+                                    opA = new string[LNQ.Count];
+                                    for (int i = 0; i < LNQ.Count; i++)
+                                    {
+                                        opA[i] = LNQ[i].intent;
+                                    }
                                 }
                             }
+
                         }
 
-                    }
+                        PromptDialog.Choice(context,
+                                                MessageLoop,
+                                                opA,
+                                                PromptTranslated,
+                                                RetryPrompt,
+                                                promptStyle: PromptStyle.Auto);
+                        break;
+                    case "Hero":
+                        var replyH = context.MakeMessage();
+                        //type,title,subtitle,text,urlforimage,urltoopen
+                        AttachmentHero item1 = JsonConvert.DeserializeObject<AttachmentHero>(CurrentQuestionRow.QuestionText.Replace("'", "\""));
 
-                    PromptDialog.Choice(context,
-                                            MessageLoop,
-                                            opA,
-                                            PromptTranslated,
-                                            RetryPrompt,
-                                            promptStyle: PromptStyle.Auto);
-                    break;
-                case "Hero":
-                    var replyH = context.MakeMessage();
-                    //type,title,subtitle,text,urlforimage,urltoopen
-                    AttachmentHero item1 = JsonConvert.DeserializeObject<AttachmentHero>(CurrentQuestionRow.QuestionText.Replace("'", "\""));
-
-                    List<CardAction> LCA = new List<CardAction>();
-                    foreach (var actions in item1.action)
-                    {
-                        string actiontype = "";
-                        switch (actions.type)
+                        List<CardAction> LCA = new List<CardAction>();
+                        foreach (var actions in item1.action)
                         {
-                            case "OpenURL":
-                                actiontype = ActionTypes.OpenUrl;
-                                break;
-                            case "ImBack":
-                                actiontype = ActionTypes.ImBack;
-                                break;
-                            default:
-                                actiontype = ActionTypes.ImBack;
-                                break;
+                            string actiontype = "";
+                            switch (actions.type)
+                            {
+                                case "OpenURL":
+                                    actiontype = ActionTypes.OpenUrl;
+                                    break;
+                                case "ImBack":
+                                    actiontype = ActionTypes.ImBack;
+                                    break;
+                                default:
+                                    actiontype = ActionTypes.ImBack;
+                                    break;
+                            }
+                            CardAction CA = new CardAction(actiontype, actions.title, value: actions.value);
+                            LCA.Add(CA);
                         }
-                        CardAction CA = new CardAction(actiontype, actions.title, value: actions.value);
-                        LCA.Add(CA);
-                    }
 
-                    replyH.Attachments = new List<Attachment>
-                    {
-                        Bot.GetHeroCard(item1.title, item1.subtitle, item1.text, new List<CardImage>() { new CardImage(url: item1.imageURL) }, LCA)
-                    };
-                    await context.PostAsync(replyH);
-                    await ProcessResponse(context, "", null);
-                    break;
-                case "Boolean":
-                    if (bHasHero)
-                    {
-                        context.Wait(ProcessResponseBypass);
-                    }
-                    else
-                        PromptDialog.Confirm(context,
-                                        MessageLoop,
-                                        PromptTranslated,
-                                        RetryPrompt);
-                    break;
-                case "Integer":
-                    if (bHasHero)
-                    {
-                        context.Wait(ProcessResponseBypass);
-                    }
-                    else
-                        PromptDialog.Number(context,
-                                        MessageLoop,
-                                        PromptTranslated,
-                                        RetryPrompt);
-                    break;
-                case "Message":
-                    if (!bHasHero)
-                    {
-                        await context.PostAsync(PromptTranslated);
-                    }
-                    await ProcessResponse(context, "", null);
-                    break;
-                case "MessageEnd":
-                    if (!bHasHero)
-                    {
-                        await context.PostAsync(PromptTranslated);
-                    }
+                        replyH.Attachments = new List<Attachment>
+                        {
+                            Bot.GetHeroCard(item1.title, item1.subtitle, item1.text, new List<CardImage>() { new CardImage(url: item1.imageURL) }, LCA)
+                        };
+                        await context.PostAsync(replyH);
+                        await ProcessResponse(context, "", null);
+                        break;
+                    case "Boolean":
+                        if (bHasHero)
+                        {
+                            context.Wait(ProcessResponseBypass);
+                        }
+                        else
+                            PromptDialog.Confirm(context,
+                                            MessageLoop,
+                                            PromptTranslated,
+                                            RetryPrompt);
+                        break;
+                    case "Integer":
+                        if (bHasHero)
+                        {
+                            context.Wait(ProcessResponseBypass);
+                        }
+                        else
+                            PromptDialog.Number(context,
+                                            MessageLoop,
+                                            PromptTranslated,
+                                            RetryPrompt);
+                        break;
+                    case "Message":
+                        if (!bHasHero)
+                        {
+                            await context.PostAsync(PromptTranslated);
+                        }
+                        await ProcessResponse(context, "", null);
+                        break;
+                    case "MessageEnd":
+                        if (!bHasHero)
+                        {
+                            await context.PostAsync(PromptTranslated);
+                        }
 
-                    context.Done(true);
-                    break;
-                default:
-                    break;
-            }
+                        context.Done(true);
+                        break;
+                    case "ResetAllVars":
+                        this.Properties=new Dictionary<string, string>();
+                        await ProcessResponse(context, "", null);
+                        break;
+                    default:
+                        break;
+                }
                 #endregion
             }
         }
@@ -540,8 +546,7 @@ namespace LAM.BotFramework
             }
             return text;
         }
-
-
+        
         #region StackManagement
         private void StackReset(string value)
         {
@@ -585,39 +590,28 @@ namespace LAM.BotFramework
             //type,title,subtitle,text,urlforimage,urltoopen
             AttachmentHero item1 = JsonConvert.DeserializeObject<AttachmentHero>(CurrentQuestionRow.QuestionText.Replace("'", "\""));
 
-            string iti = item1.title;
-            string isu = item1.subtitle;
-            string ite = item1.text;
-            if (language != "en")
-            {
-                iti = Translator.Translate(TranslatorToken, iti, "en", language);
-                isu = Translator.Translate(TranslatorToken, isu, "en", language);
-                ite = Translator.Translate(TranslatorToken, ite, "en", language);
-            }
+            string iti =  Translator.Translate(item1.title, "en", language);
+            string isu = Translator.Translate(item1.subtitle, "en", language);
+            string ite = Translator.Translate(item1.text, "en", language);
 
             List<CardAction> LCA = new List<CardAction>();
             foreach (var actions in item1.action)
             {
                 string actiontype = "";
-                switch (actions.type)
+                switch (actions.type.ToLower())
                 {
-                    case "OpenURL":
+                    case "openurl":
                         actiontype = ActionTypes.OpenUrl;
                         break;
-                    case "ImBack":
+                    case "imback":
                         actiontype = ActionTypes.ImBack;
                         break;
                     default:
                         actiontype = ActionTypes.ImBack;
                         break;
                 }
-                string ati = actions.title;
-                string ava = actions.value;
-                if (language != "en")
-                {
-                    ati = Translator.Translate(TranslatorToken, ati, "en", language);
-                    ava = Translator.Translate(TranslatorToken, ava, "en", language);
-                }
+                string ati = Translator.Translate(actions.title, "en", language);
+                string ava = Translator.Translate(actions.value, "en", language);
                 CardAction CA = new CardAction(actiontype, ati, value: ava);
                 LCA.Add(CA);
             }
@@ -641,39 +635,29 @@ namespace LAM.BotFramework
             List<Attachment> LA = new List<Attachment>();
             foreach (AttachmentHero item in items)
             {
-                string iti = item.title;
-                string isu = item.subtitle;
-                string ite = item.text;
-                if (language != "en")
-                {
-                    iti = Translator.Translate(TranslatorToken, iti, "en", language);
-                    isu = Translator.Translate(TranslatorToken, isu, "en", language);
-                    ite = Translator.Translate(TranslatorToken, ite, "en", language);
-                }
+                string iti = Translator.Translate(item.title, "en", language);
+                string isu = Translator.Translate(item.subtitle, "en", language);
+                string ite = Translator.Translate(item.text, "en", language);
 
                 List<CardAction> LCA = new List<CardAction>();
                 foreach (var actions in item.action)
                 {
                     string actiontype = "";
-                    switch (actions.type)
+                    switch (actions.type.ToLower())
                     {
-                        case "OpenURL":
+                        case "openurl":
                             actiontype = ActionTypes.OpenUrl;
                             break;
-                        case "ImBack":
+                        case "imback":
                             actiontype = ActionTypes.ImBack;
                             break;
                         default:
                             actiontype = ActionTypes.ImBack;
                             break;
                     }
-                    string ati = actions.title;
-                    string ava = actions.value;
-                    if (language != "en")
-                    {
-                        ati = Translator.Translate(TranslatorToken, ati, "en", language);
-                        ava = Translator.Translate(TranslatorToken, ava, "en", language);
-                    }
+                    string ati = Translator.Translate(actions.title, "en", language);
+                    string ava = Translator.Translate(actions.value, "en", language);
+
                     CardAction CA = new CardAction(actiontype, ati, value: ava);
                     LCA.Add(CA);
                 }
@@ -711,11 +695,7 @@ namespace LAM.BotFramework
             string result = await message;
 
             string language = GetLanguage(context);
-            string ResultTranslated = result;
-            if (language != "en")
-            {
-                ResultTranslated = Translator.Translate(TranslatorToken, result, language, "en");
-            }
+            string ResultTranslated = Translator.Translate(result, language, "en");
 
             await ProcessResponseLUIS(context, ResultTranslated);
         }
@@ -737,37 +717,38 @@ namespace LAM.BotFramework
         private async Task ProcessResponseLUISBypass(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
-            string resultT = act.Text;
 
             string language = GetLanguage(context);
-            string ResultTranslated = resultT;
-            if (language != "en")
-            {
-                ResultTranslated = Translator.Translate(TranslatorToken, resultT, language, "en");
-            }
+            string ResultTranslated = Translator.Translate(act.Text, language, "en");
 
             await ProcessResponseLUIS(context, ResultTranslated);
         }
         private async Task ProcessResponseQnABypass(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
-            string resultT = act.Text;
 
-            await ProcessResponseQnAMaker(context, resultT);
+            string language = GetLanguage(context);
+            string ResultTranslated = Translator.Translate(act.Text, language, "en");
+
+            await ProcessResponseQnAMaker(context, ResultTranslated);
         }
         private async Task ProcessResponseSearchBypass(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
-            string resultT = act.Text;
 
-            await ProcessResponseSearch(context, resultT);
+            string language = GetLanguage(context);
+            string ResultTranslated = Translator.Translate(act.Text, language, "en");
+
+            await ProcessResponseSearch(context, ResultTranslated);
         }
         private async Task ProcessResponseBypass(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
-            string resultT = act.Text;
 
-            await ProcessResponse(context, resultT, null);
+            string language = GetLanguage(context);
+            string ResultTranslated = Translator.Translate(act.Text, language, "en");
+
+            await ProcessResponse(context, ResultTranslated, null);
         }
         protected async Task ProcessResponse(IDialogContext context, string result, int? ForceNextQ)
         {
@@ -789,12 +770,10 @@ namespace LAM.BotFramework
 
             if (Q.CurrentQuestion >= LQJ.Count)
             {
-                //QDone(this, new QuestionEventArgs(-1));
                 context.Done(true);
             }
             else
             {
-                //QDone(this, new QuestionEventArgs(Q.CurrentQuestion));
                 //NEXT QUESTION
                 Q.Load(LQJ[Q.CurrentQuestion]);
                 await Q.Execute(context,null);
@@ -812,23 +791,12 @@ namespace LAM.BotFramework
 
             OptionsQnAMaker OQ = JsonConvert.DeserializeObject<OptionsQnAMaker>(QJ.Options.Replace("'", "\""));
 
-            QnAMaker.QnAMakerResult R = QnAMaker.Get(OQ.KBId, OQ.Key, result);
+            QnAMaker.QnAMakerResult R = ServiceConnectors.QnAMaker.Get(OQ.KBId, OQ.Key, result);
 
             double OQMS = 0;
             double.TryParse(OQ.MinScore, out OQMS);
-            if (R.Score >= OQMS)
-            {
-                await context.PostAsync(R.Answer); // + "(" + R.Score.ToString() + ")"
-            }
-            else
-            {
-                string NFM = "Could not find an answer to your question.";
-                if (!string.IsNullOrEmpty(OQ.NotFoundMessage))
-                {
-                    NFM = OQ.NotFoundMessage;
-                }
-                await context.PostAsync(NFM);
-            }
+
+            await Render.QnAMaker(context, OQ.NotFoundMessage, R, OQMS);
 
             Q.CurrentQuestion++;
             Q.MoveNextStep(QJ, "");
@@ -842,9 +810,10 @@ namespace LAM.BotFramework
                 //QDone(this, new QuestionEventArgs(Q.CurrentQuestion));
 
                 Q.Load(LQJ[Q.CurrentQuestion]);
-                await Q.Execute(context,null);
+                await Q.Execute(context, null);
             }
         }
+
         protected async Task ProcessResponseSearch(IDialogContext context, string result)
         {
             Question Q = new Question(context);
@@ -856,7 +825,6 @@ namespace LAM.BotFramework
             Q.PropertiesStore(QJ.NodeName, result);
 
             OptionsSearch OS = JsonConvert.DeserializeObject<OptionsSearch>(QJ.Options.Replace("'", "\""));
-            //{ "ServiceName":"lambot", "Key":"90947649A5D546F836B02CB2AA85AE8F", "Index":"tags", "Field":"Title","MaxResults":"3"}
 
             SearchServiceClient serviceClient = new SearchServiceClient(OS.ServiceName, new SearchCredentials(OS.Key));
             SearchParameters parameters;
@@ -870,112 +838,8 @@ namespace LAM.BotFramework
 
             ISearchIndexClient indexClient = serviceClient.Indexes.GetClient(OS.Index);
             DocumentSearchResult<object> searchResults = indexClient.Documents.Search<object>(result, parameters);
-            int nResults = 0;
-            SearchResult<object> searchResult;
 
-
-            int i = 0;
-            int Total = 0;
-            while (i < searchResults.Results.Count)
-            {
-                if (searchResults.Results[i].Score > 0.25)
-                    Total++;
-                i++;
-            }
-            string sMsg = "Found ";
-            if (Total > 1)
-                sMsg += Total + " entries ";
-            else
-            {
-                if (Total == 0)
-                    sMsg += " no entries ";
-                else
-                    sMsg += "one entry ";
-            }
-            //sMsg += "with score > 0.25";
-            if (Total > int.Parse(OS.MaxResults))
-                sMsg += " Showing the first " + OS.MaxResults + ".";
-            await context.PostAsync(sMsg);
-
-
-            var replyMessage0 = context.MakeMessage();
-            List<Attachment> LA = new List<Attachment>();
-            if (searchResults.Results.Count > 0)
-            {
-                var item = searchResults.Results[0].Highlights;
-                var s = item["content"];
-                foreach (var item2 in s)
-                {
-                    string item3 = item2.Replace("<em>", "**").Replace("</em>", "**");
-                    Attachment A1 = new HeroCard()
-                    {
-                        Text = item3
-                        //Buttons = new List<CardAction>() { CA }
-                    }
-                    .ToAttachment();
-                    LA.Add(A1);
-                }
-                replyMessage0.Attachments = LA;
-                await context.PostAsync(replyMessage0);
-            }
-
-            LA = new List<Attachment>();
-            var replyMessage = context.MakeMessage();
-            while (nResults < int.Parse(OS.MaxResults) && nResults < searchResults.Results.Count)
-            {
-                searchResult = searchResults.Results[nResults];
-                if (searchResult.Score > 0.25)
-                {
-
-                    Dictionary<string, object> LC = JsonConvert.DeserializeObject<Dictionary<string, object>>(searchResult.Document.ToString());
-
-                    CardAction CA = new CardAction(ActionTypes.ImBack, searchResult.Score.ToString(), null, "value");
-                    //replyMessage.Text = "**" + LC[OS.FieldQ] + "**";
-                    int mT = LC[OS.FieldA].ToString().Length;
-                    int mC = LC[OS.FieldQ].ToString().Length;
-                    if (mT > 200)
-                        mT = 200;
-                    if (mC > 200)
-                        mC = 200;
-                    Attachment A = new HeroCard()
-                    {
-                        Text = "**" + LC[OS.FieldA].ToString().Substring(0,mT) + "**",
-                        Subtitle = LC[OS.FieldQ].ToString().Substring(0,mC),
-                        //Buttons = new List<CardAction>() { CA }
-                    }
-                    .ToAttachment();
-                    //LA.Add(A);
-                    //await context.PostAsync("Score:" + searchResult.Score);
-
-                }
-                nResults++;
-            }
-            if (LA.Count > 0)
-            {
-                replyMessage.Attachments = LA;
-                await context.PostAsync(replyMessage);
-            }
-
-            //await context.PostAsync("**" + (nResults + 1) + ". " + LC[OS.FieldQ] + "**\n\n" + LC[OS.FieldA]);
-            //foreach (var kbItem in kbResponseList)
-            //{
-            //    var replyMessage = context.MakeMessage();
-
-            //    replyMessage.Text = string.Format("{0}", kbItem.Text);
-
-            //    replyMessage.Attachments = (kbItem.ActionButtons.Count > 0) ?
-            //        new List<Attachment>()
-            //        {
-            //            new HeroCard()
-            //            {
-            //                Text = "Read more...",
-            //                Buttons = kbItem.ActionButtons
-            //            }
-            //            .ToAttachment()
-            //        } : (null);
-
-            //    await context.PostAsync(replyMessage);
-            //}
+            await Render.Search(context, OS, searchResults);
 
             Q.CurrentQuestion++;
             Q.MoveNextStep(QJ, "");
@@ -989,9 +853,10 @@ namespace LAM.BotFramework
                 //QDone(this, new QuestionEventArgs(Q.CurrentQuestion));
 
                 Q.Load(LQJ[Q.CurrentQuestion]);
-                await Q.Execute(context,null);
+                await Q.Execute(context, null);
             }
         }
+
         protected async Task ProcessResponseLUIS(IDialogContext context, string result)
         {
             Question Q = new Question(context);
@@ -1124,11 +989,15 @@ namespace LAM.BotFramework
                 MoveNextStep(newQJ, "");
             }
         }
+        public void SetLanguage(IDialogContext context, string language)
+        {
+            context.PrivateConversationData.SetValue("CurrentLanguage", language);
+        }
         public string GetLanguage(IDialogContext context)
         {
             string detectedLanguage = "";
             context.PrivateConversationData.TryGetValue("CurrentLanguage", out detectedLanguage);
-            if (detectedLanguage == "" || detectedLanguage == null)
+            if (string.IsNullOrEmpty(detectedLanguage))
                 detectedLanguage = "en";
             return detectedLanguage;
         }

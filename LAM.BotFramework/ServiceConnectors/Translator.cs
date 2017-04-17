@@ -22,13 +22,13 @@ namespace LAM.BotFramework.ServiceConnectors
                 return "";
             }
         }
-        public static string Detect(string authToken, string textToDetect)
+        public static string Detect(string textToDetect)
         {
             string languageDetected = "";
             //Keep appId parameter blank as we are sending access token in authorization header.
             string uri = "http://api.microsofttranslator.com/v2/Http.svc/Detect?text=" + System.Web.HttpUtility.UrlEncode(textToDetect);
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(uri);
-            httpWebRequest.Headers.Add("Authorization", authToken);
+            httpWebRequest.Headers.Add("Authorization", GetToken());
             WebResponse response = null;
             try
             {
@@ -53,9 +53,10 @@ namespace LAM.BotFramework.ServiceConnectors
             }
             return languageDetected;
         }
-        public static string Translate(string authToken, string textToTranslate, string languageFrom, string languageTo)
+        public static string Translate( string textToTranslate, string languageFrom, string languageTo)
         {
-            if (authToken == "")
+            string authToken = GetToken();
+            if (authToken == "" || languageFrom==languageTo)
             {
                 return textToTranslate;
             }

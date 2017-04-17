@@ -2,6 +2,13 @@
 
 #### A Data Driven Framework for Microsoft Bot Framework
 
+```
+Update 1.0.0.6:
+- Translation Services
+- URL config to debug API Calls
+- FlowEditor bug fixes
+```
+
 The Bot flow is defined by a data structure.
 The flow definition is stored in Azure Table Storage. This enables version control and change of the flow without editing code.
 
@@ -46,6 +53,11 @@ To use the Framework you will need to:
     <add key="LAMBF.ScenarioTableName" value="<YourScenarioTableName>" />
     <add key="LAMBF.ScenarioName" value="<YourScenarioName>" />
     <add key="LAMBF.LogTableName" value="<YourLogTableName>" />
+    <!-- This is the URL to debug local API calls -->
+    <add key="LAMBF.DebugServicesURL" value="" /> 
+    <!-- If you are using Translartion Services -->
+    <add key="LAMBF.TranslateClientId" value="<id>" />
+    <add key="LAMBF.TranslateSecret" value="<key>" />
 ```
 3. Call the Framework dialog
 4. In the *Post* method in the *MessagesController*, call the dialog:
