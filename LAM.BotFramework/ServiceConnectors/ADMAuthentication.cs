@@ -29,8 +29,8 @@ namespace LAM.BotFramework.ServiceConnectors
     public class AdmAuthentication
     {
         public static readonly string DatamarketAccessUri = "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13";
-        private string clientId;
-        private string clientSecret;
+        private string clientId="";
+        private string clientSecret = "";
         private string request;
         private AdmAccessToken token;
         private Timer accessTokenRenewer;
@@ -40,11 +40,18 @@ namespace LAM.BotFramework.ServiceConnectors
         {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
-            //If clientid or client secret has special characters, encode before sending request
-            this.request = string.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=http://api.microsofttranslator.com", HttpUtility.UrlEncode(clientId), HttpUtility.UrlEncode(clientSecret));
-            this.token = HttpPost(DatamarketAccessUri, this.request);
-            //renew the token every specfied minutes
-            accessTokenRenewer = new Timer(new TimerCallback(OnTokenExpiredCallback), this, TimeSpan.FromMinutes(RefreshTokenDuration), TimeSpan.FromMilliseconds(-1));
+            if (string.IsNullOrEmpty(clientId)) {
+                this.request = "";
+                this.token = null;
+            }
+            else
+            {
+                //If clientid or client secret has special characters, encode before sending request
+                this.request = string.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=http://api.microsofttranslator.com", HttpUtility.UrlEncode(clientId), HttpUtility.UrlEncode(clientSecret));
+                this.token = HttpPost(DatamarketAccessUri, this.request);
+                //renew the token every specfied minutes
+                accessTokenRenewer = new Timer(new TimerCallback(OnTokenExpiredCallback), this, TimeSpan.FromMinutes(RefreshTokenDuration), TimeSpan.FromMilliseconds(-1));
+            }
         }
         public AdmAccessToken GetAccessToken()
         {

@@ -10,20 +10,28 @@ namespace LAM.BotFramework.ServiceConnectors
         const string TranslatorServiceURL = "http://api.microsofttranslator.com/v2/Http.svc/Translate?text=";
         public static string GetToken()
         {
-            try
+            if (Global.TranslationEnabled)
             {
-                // Create a header with the access_token property of the returned token
-                AdmAccessToken admToken = Global.admAuth.GetAccessToken();
-                return "Bearer " + admToken.access_token;
+                try
+                {
+                    // Create a header with the access_token property of the returned token
+                    AdmAccessToken admToken = Global.admAuth.GetAccessToken();
+                    return "Bearer " + admToken.access_token;
+                }
+                catch (Exception e)
+                {
+                    string log = e.Source;
+                    return "";
+                }
             }
-            catch (Exception e)
-            {
-                string log = e.Source;
+            else
                 return "";
-            }
         }
         public static string Detect(string textToDetect)
         {
+            if (!Global.TranslationEnabled)
+                return "";
+
             string languageDetected = "";
             //Keep appId parameter blank as we are sending access token in authorization header.
             string uri = "http://api.microsofttranslator.com/v2/Http.svc/Detect?text=" + System.Web.HttpUtility.UrlEncode(textToDetect);
@@ -55,8 +63,10 @@ namespace LAM.BotFramework.ServiceConnectors
         }
         public static string Translate( string textToTranslate, string languageFrom, string languageTo)
         {
+            if (!Global.TranslationEnabled || languageFrom == languageTo)
+                return textToTranslate;
             string authToken = GetToken();
-            if (authToken == "" || languageFrom==languageTo)
+            if (authToken == "")
             {
                 return textToTranslate;
             }

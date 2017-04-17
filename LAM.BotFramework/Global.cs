@@ -16,7 +16,7 @@ namespace LAM.BotFramework
         public static CloudTable tableLog;
         public static CloudTable tableScenario;
         public static AdmAuthentication admAuth=null;
-        public static string TranslatorToken = "";
+        public static bool TranslationEnabled = false;
         public static string ScenarioName = "";
         public static string PragmaOpen = "#!";
         public static string PragmaClose = "!#";
@@ -51,7 +51,7 @@ namespace LAM.BotFramework
             if (!string.IsNullOrEmpty(TranslateClientId))
             {
                 Global.admAuth = new AdmAuthentication(TranslateClientId, TranslateSecret);
-                Global.TranslatorToken = Translator.GetToken();
+                Global.TranslationEnabled = true; 
             }
 
         }
