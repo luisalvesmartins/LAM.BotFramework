@@ -20,6 +20,10 @@ namespace LAM.BotFramework.Dialogs
 
         public async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> argument)
         {
+            var dummyActivity = context.MakeMessage();
+            string yourServiceURL = dummyActivity.ServiceUrl;
+            
+
             IMessageActivity A = await argument;
             string JSon = Scenario.LoadRecentScenario(Global.ScenarioName);
             if (string.IsNullOrEmpty(JSon))
