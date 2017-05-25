@@ -1,112 +1,135 @@
 ﻿using System;
 using System.Net;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Runtime.Serialization.Json;
-using System.Threading;
-using System.Web;
-using System.IO;
+using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace LAM.BotFramework.ServiceConnectors
+/// <summary>
+/// Client to call Cognitive Services Azure Auth Token service in order to get an access token.
+/// Exposes asynchronous as well as synchronous methods.
+/// </summary>
 {
-    /// <summary>
-    /// AdmAuthentication for token 
-    /// Revised LAM 13.03
-    /// </summary>
-
-    [DataContract]
-    public class AdmAccessToken
+    public class ADMAuthentication
     {
-        [DataMember]
-        public string access_token { get; set; }
-        [DataMember]
-        public string token_type { get; set; }
-        [DataMember]
-        public string expires_in { get; set; }
-        [DataMember]
-        public string scope { get; set; }
-    }
-    public class AdmAuthentication
-    {
-        public static readonly string DatamarketAccessUri = "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13";
-        private string clientId="";
-        private string clientSecret = "";
-        private string request;
-        private AdmAccessToken token;
-        private Timer accessTokenRenewer;
-        //Access token expires every 10 minutes. Renew it every 9 minutes only.
-        private const int RefreshTokenDuration = 9;
-        public AdmAuthentication(string clientId, string clientSecret)
-        {
-            this.clientId = clientId;
-            this.clientSecret = clientSecret;
-            if (string.IsNullOrEmpty(clientId)) {
-                this.request = "";
-                this.token = null;
-            }
-            else
-            {
-                //If clientid or client secret has special characters, encode before sending request
-                this.request = string.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=http://api.microsofttranslator.com", HttpUtility.UrlEncode(clientId), HttpUtility.UrlEncode(clientSecret));
-                this.token = HttpPost(DatamarketAccessUri, this.request);
-                //renew the token every specfied minutes
-                accessTokenRenewer = new Timer(new TimerCallback(OnTokenExpiredCallback), this, TimeSpan.FromMinutes(RefreshTokenDuration), TimeSpan.FromMilliseconds(-1));
-            }
-        }
-        public AdmAccessToken GetAccessToken()
-        {
-            return this.token;
-        }
-        private void RenewAccessToken()
-        {
-            AdmAccessToken newAccessToken = HttpPost(DatamarketAccessUri, this.request);
-            //swap the new token with old one
-            //Note: the swap is thread unsafe
-            this.token = newAccessToken;
-            Console.WriteLine(string.Format("Renewed token for user: {0} is: {1}", this.clientId, this.token.access_token));
-        }
-        private void OnTokenExpiredCallback(object stateInfo)
-        {
-            try
-            {
-                RenewAccessToken();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(string.Format("Failed renewing access token. Details: {0}", ex.Message));
-            }
-            finally
-            {
-                try
-                {
-                    accessTokenRenewer.Change(TimeSpan.FromMinutes(RefreshTokenDuration), TimeSpan.FromMilliseconds(-1));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(string.Format("Failed to reschedule the timer to renew access token. Details: {0}", ex.Message));
-                }
-            }
-        }
-        private AdmAccessToken HttpPost(string DatamarketAccessUri, string requestDetails)
-        {
-            //Prepare OAuth request 
-            WebRequest webRequest = WebRequest.Create(DatamarketAccessUri);
-            webRequest.ContentType = "application/x-www-form-urlencoded";
-            webRequest.Method = "POST";
-            byte[] bytes = Encoding.ASCII.GetBytes(requestDetails);
-            webRequest.ContentLength = bytes.Length;
-            using (Stream outputStream = webRequest.GetRequestStream())
-            {
-                outputStream.Write(bytes, 0, bytes.Length);
-            }
-            using (WebResponse webResponse = webRequest.GetResponse())
-            {
-                DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(AdmAccessToken));
-                //Get deserialized object from JSON stream
-                AdmAccessToken token = (AdmAccessToken)serializer.ReadObject(webResponse.GetResponseStream());
-                return token;
-            }
-        }
-    }
+        /// URL of the token service
+        private static readonly Uri ServiceUrl = new Uri("https://api.cognitive.microsoft.com/sts/v1.0/issueToken");
 
+        /// Name of header used to pass the subscription key to the token service
+        private const string OcpApimSubscriptionKeyHeader = "Ocp-Apim-Subscription-Key";
+
+        /// After obtaining a valid token, this class will cache it for this duration.
+        /// Use a duration of 5 minutes, which is less than the actual token lifetime of 10 minutes.
+        private static readonly TimeSpan TokenCacheDuration = new TimeSpan(0, 5, 0);
+
+        /// Cache the value of the last valid token obtained from the token service.
+        private string _storedTokenValue = string.Empty;
+
+        /// When the last valid token was obtained.
+        private DateTime _storedTokenTime = DateTime.MinValue;
+
+        /// Gets the subscription key.
+        public string SubscriptionKey { get; }
+
+        /// Gets the HTTP status code for the most recent request to the token service.
+        public HttpStatusCode RequestStatusCode { get; private set; }
+
+        /// <summary>
+        /// Creates a client to obtain an access token.
+        /// </summary>
+        /// <param name="key">Subscription key to use to get an authentication token.</param>
+        public ADMAuthentication(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new ArgumentNullException(nameof(key), "A subscription key is required");
+            }
+
+            this.SubscriptionKey = key;
+            this.RequestStatusCode = HttpStatusCode.InternalServerError;
+        }
+
+        /// <summary>
+        /// Gets a token for the specified subscription.
+        /// </summary>
+        /// <returns>The encoded JWT token prefixed with the string "Bearer ".</returns>
+        /// <remarks>
+        /// This method uses a cache to limit the number of request to the token service.
+        /// A fresh token can be re-used during its lifetime of 10 minutes. After a successful
+        /// request to the token service, this method caches the access token. Subsequent 
+        /// invocations of the method return the cached token for the next 5 minutes. After
+        /// 5 minutes, a new token is fetched from the token service and the cache is updated.
+        /// </remarks>
+        public async Task<string> GetAccessTokenAsync()
+        {
+            if (string.IsNullOrWhiteSpace(this.SubscriptionKey))
+            {
+                return string.Empty;
+            }
+
+            // Re-use the cached token if there is one.
+            if ((DateTime.Now - _storedTokenTime) < TokenCacheDuration)
+            {
+                return _storedTokenValue;
+            }
+
+            using (var client = new HttpClient())
+            using (var request = new HttpRequestMessage())
+            {
+                request.Method = HttpMethod.Post;
+                request.RequestUri = ServiceUrl;
+                request.Content = new StringContent(string.Empty);
+                request.Headers.TryAddWithoutValidation(OcpApimSubscriptionKeyHeader, this.SubscriptionKey);
+                client.Timeout = TimeSpan.FromSeconds(2);
+                var response = await client.SendAsync(request);
+                this.RequestStatusCode = response.StatusCode;
+                response.EnsureSuccessStatusCode();
+                var token = await response.Content.ReadAsStringAsync();
+                _storedTokenTime = DateTime.Now;
+                _storedTokenValue = "Bearer " + token;
+                return _storedTokenValue;
+            }
+        }
+
+        /// <summary>
+        /// Gets a token for the specified subscription. Synchronous version.
+        /// Use of async version preferred
+        /// </summary>
+        /// <returns>The encoded JWT token prefixed with the string "Bearer ".</returns>
+        /// <remarks>
+        /// This method uses a cache to limit the number of request to the token service.
+        /// A fresh token can be re-used during its lifetime of 10 minutes. After a successful
+        /// request to the token service, this method caches the access token. Subsequent 
+        /// invocations of the method return the cached token for the next 5 minutes. After
+        /// 5 minutes, a new token is fetched from the token service and the cache is updated.
+        /// </remarks>
+        public string GetAccessToken()
+        {
+            // Re-use the cached token if there is one.
+            if ((DateTime.Now - _storedTokenTime) < TokenCacheDuration)
+            {
+                return _storedTokenValue;
+            }
+
+            string accessToken = null;
+            var task = Task.Run(async () =>
+            {
+                accessToken = await this.GetAccessTokenAsync();
+            });
+
+            while (!task.IsCompleted)
+            {
+                System.Threading.Thread.Yield();
+            }
+            if (task.IsFaulted)
+            {
+                throw task.Exception;
+            }
+            if (task.IsCanceled)
+            {
+                throw new Exception("Timeout obtaining access token.");
+            }
+            return accessToken;
+        }
+
+    }
 }

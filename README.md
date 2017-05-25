@@ -3,6 +3,11 @@
 #### A Data Driven Framework for Microsoft Bot Framework
 
 ```
+Update 1.0.1.0:
+- Fix the translation services call to use Azure Key
+- Translator Web.Config key changed to LAMBF.TranslatorKey
+
+
 Update 1.0.0.6:
 - Translation Services
 - URL config to debug API Calls
@@ -56,8 +61,7 @@ To use the Framework you will need to:
     <!-- This is the URL to debug local API calls -->
     <add key="LAMBF.DebugServicesURL" value="" /> 
     <!-- If you are using Translartion Services -->
-    <add key="LAMBF.TranslateClientId" value="<id>" />
-    <add key="LAMBF.TranslateSecret" value="<key>" />
+    <add key="LAMBF.TranslatorKey" value="<id>" />
 ```
 3. Call the Framework dialog
 4. In the *Post* method in the *MessagesController*, call the dialog:

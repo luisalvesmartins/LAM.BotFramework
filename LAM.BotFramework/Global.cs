@@ -15,7 +15,7 @@ namespace LAM.BotFramework
     {
         public static CloudTable tableLog;
         public static CloudTable tableScenario;
-        public static AdmAuthentication admAuth=null;
+        public static ADMAuthentication admAuth =null;
         public static bool TranslationEnabled = false;
         public static string ScenarioName = "";
         public static string PragmaOpen = "#!";
@@ -46,11 +46,10 @@ namespace LAM.BotFramework
             tableScenario = Scenario.GetTableReference(tableClient, scenarioTableName);
 
             //INIT TRANSLATOR
-            string TranslateClientId = CloudConfigurationManager.GetSetting("LAMBF.TranslateClientId");
-            string TranslateSecret = CloudConfigurationManager.GetSetting("LAMBF.TranslateSecret");
-            if (!string.IsNullOrEmpty(TranslateClientId))
+            string TranslateKey = CloudConfigurationManager.GetSetting("LAMBF.TranslatorKey");
+            if (!string.IsNullOrEmpty(TranslateKey))
             {
-                Global.admAuth = new AdmAuthentication(TranslateClientId, TranslateSecret);
+                Global.admAuth = new ADMAuthentication(TranslateKey);
                 Global.TranslationEnabled = true; 
             }
 

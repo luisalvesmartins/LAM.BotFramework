@@ -15,8 +15,7 @@ namespace LAM.BotFramework.ServiceConnectors
                 try
                 {
                     // Create a header with the access_token property of the returned token
-                    AdmAccessToken admToken = Global.admAuth.GetAccessToken();
-                    return "Bearer " + admToken.access_token;
+                    return Global.admAuth.GetAccessToken();
                 }
                 catch (Exception e)
                 {
@@ -34,12 +33,13 @@ namespace LAM.BotFramework.ServiceConnectors
 
             string languageDetected = "";
             //Keep appId parameter blank as we are sending access token in authorization header.
-            string uri = "http://api.microsofttranslator.com/v2/Http.svc/Detect?text=" + System.Web.HttpUtility.UrlEncode(textToDetect);
+            string uri = "https://api.microsofttranslator.com/v2/Http.svc/Detect?text=" + System.Web.HttpUtility.UrlEncode(textToDetect);
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(uri);
             httpWebRequest.Headers.Add("Authorization", GetToken());
             WebResponse response = null;
             try
             {
+
                 response = httpWebRequest.GetResponse();
                 using (Stream stream = response.GetResponseStream())
                 {
@@ -47,9 +47,9 @@ namespace LAM.BotFramework.ServiceConnectors
                     languageDetected = (string)dcs.ReadObject(stream);
                 }
             }
-            catch
+            catch(Exception e)
             {
-                throw;
+                return "Error calling the translator service:" + e.Message;
             }
             finally
             {
@@ -102,25 +102,5 @@ namespace LAM.BotFramework.ServiceConnectors
                 return translation;
             }
         }
-        private static void ProcessWebException(WebException e)
-        {
-            Console.WriteLine("{0}", e.ToString());
-            // Obtain detailed error information
-            string strResponse = string.Empty;
-            using (HttpWebResponse response = (HttpWebResponse)e.Response)
-            {
-                using (Stream responseStream = response.GetResponseStream())
-                {
-                    using (StreamReader sr = new StreamReader(responseStream, System.Text.Encoding.ASCII))
-                    {
-                        strResponse = sr.ReadToEnd();
-                    }
-                }
-            }
-            Console.WriteLine("Http status code={0}, error message={1}", e.Status, strResponse);
-        }
-
-
-
     }
 }
