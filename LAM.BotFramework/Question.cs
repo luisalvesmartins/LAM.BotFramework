@@ -12,6 +12,7 @@ using System.Text;
 using LAM.BotFramework.Entities;
 using LAM.BotFramework.ServiceConnectors;
 using LAM.BotFramework.Helpers;
+using AdaptiveCards;
 
 namespace LAM.BotFramework
 {
@@ -153,25 +154,28 @@ namespace LAM.BotFramework
             //FOR TESTING:
             //string s = "[{'type':'Hero','title':'Im the points card bot, how can I help you?','subtitle':'','text':'','imageURL':'http://lambot.azurewebsites.net/Images/botman.png','action':[{'type': 'ImBack','title': 'Check Points','value': 'How many points do I have?'},{'type': 'ImBack','title': 'Redeem points','value': 'I want to redeem points'},{'type': 'ImBack','title': 'Transfer points','value': 'I want to transfer points'}]}]";
             //CurrentQuestionRow.QuestionText = s;
+            string LogPrompt = PromptTranslated;
 
             #region HANDLE HERO info
-            string LogPrompt = PromptTranslated;
             bool bHasHero = false;
-            if (CurrentQuestionRow.QuestionText.IndexOf("{") == 0)
+            if (CurrentQuestionRow.QuestionType != "AdaptiveCard" && CurrentQuestionRow.QuestionType != "AdaptiveCardShow")
             {
-                await HeroCardPrompt(context, language);
-                LogPrompt = CurrentQuestionRow.QuestionText;
-                CurrentQuestionRow.QuestionText = "";
-                PromptTranslated = "";
-                bHasHero = true;
-            }
-            if (CurrentQuestionRow.QuestionText.IndexOf("[") == 0)
-            {
-                await CarouselCardPrompt(context, language);
-                LogPrompt = CurrentQuestionRow.QuestionText;
-                CurrentQuestionRow.QuestionText = "";
-                PromptTranslated = "";
-                bHasHero = true;
+                if (CurrentQuestionRow.QuestionText.IndexOf("{") == 0)
+                {
+                    await HeroCardPromptAsync(context, language);
+                    LogPrompt = CurrentQuestionRow.QuestionText;
+                    CurrentQuestionRow.QuestionText = "";
+                    PromptTranslated = "";
+                    bHasHero = true;
+                }
+                if (CurrentQuestionRow.QuestionText.IndexOf("[") == 0)
+                {
+                    await CarouselCardPromptAsync(context, language);
+                    LogPrompt = CurrentQuestionRow.QuestionText;
+                    CurrentQuestionRow.QuestionText = "";
+                    PromptTranslated = "";
+                    bHasHero = true;
+                }
             }
             #endregion
 
@@ -209,9 +213,37 @@ namespace LAM.BotFramework
                 #region HANDLE QUESTIONTYPES
                 switch (CurrentQuestionRow.QuestionType)
                 {
+                    case "AdaptiveCard":
+                        
+                        AdaptiveCard card = JsonConvert.DeserializeObject<AdaptiveCards.AdaptiveCard>(CurrentQuestionRow.QuestionText);
+
+                        IMessageActivity replyToConversation = context.MakeMessage();
+                        replyToConversation.Attachments = new List<Attachment>() { new Attachment() {
+                            ContentType = AdaptiveCard.ContentType,
+                            Content = card
+                            } };
+                        await context.PostAsync(replyToConversation);
+
+                        context.Wait(ProcessAdaptiveCardAsync);
+
+                        //await ProcessResponse(context, "", null);
+                        break;
+                    case "AdaptiveCardShow":
+
+                        AdaptiveCard cardShow = JsonConvert.DeserializeObject<AdaptiveCards.AdaptiveCard>(CurrentQuestionRow.QuestionText);
+
+                        IMessageActivity replyToConversationShow = context.MakeMessage();
+                        replyToConversationShow.Attachments = new List<Attachment>() { new Attachment() {
+                            ContentType = AdaptiveCard.ContentType,
+                            Content = cardShow
+                            } };
+                        await context.PostAsync(replyToConversationShow);
+
+                        await ProcessResponse(context, "", null);
+                        break;
                     case "API":
                         //GET
-                        string json = await REST.Get(CurrentQuestionRow.QuestionText, true);
+                        string json = await REST.GetAsync(CurrentQuestionRow.QuestionText, true);
 
                         Dictionary<string, string> list = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
 
@@ -250,7 +282,7 @@ namespace LAM.BotFramework
                         try
                         {
                             //CALL IT
-                            BP = await REST.Post(CurrentQuestionRow.QuestionText, BP);
+                            BP = await REST.PostAsync(CurrentQuestionRow.QuestionText, BP);
 
                             Properties = BP.Properties;
                             if (BP.NextQuestion != nq)
@@ -582,7 +614,46 @@ namespace LAM.BotFramework
         }
         #endregion
 
-        private async Task HeroCardPrompt(IDialogContext context, string language)
+        private async Task ProcessAdaptiveCardAsync(IDialogContext context, IAwaitable<object> result)
+        {
+            Question Q = new Question(context);
+            List<QuestionRow> LQJ = Q.Questions();
+            QuestionRow QJ = LQJ[Q.CurrentQuestion];
+
+            Activity value = await result as Activity;
+            string v="";
+            if (value.Value == null)
+            {
+                v = value.Text;
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(QJ.Options))
+                {
+                    //assume "Text" is default value
+                    dynamic dValue = value.Value;
+                    v = dValue.Text;
+                }
+                else
+                {
+                    try
+                    {
+                        Newtonsoft.Json.Linq.JObject J = value.Value as Newtonsoft.Json.Linq.JObject;
+                        v = J.SelectToken(QJ.Options).ToString();
+                    }
+                    catch (Exception e)
+                    {
+                        v = "NOT FOUND";
+                    }
+
+                }
+            }
+            ConversationLog.Log(context, "USER", v, LogToken, Q.CurrentQuestion);
+
+            await ProcessResponse(context, v, null);
+        }
+
+        private async Task HeroCardPromptAsync(IDialogContext context, string language)
         {
 
             //{ 'subtitle': 'aa','text': 'aa','imageURL': 'http://lambot.azurewebsites.net/Images/cardgold.png',  'action': [    {      'type': 'ImBack',      'title': 'aaa',      'value': 'bbb'    },    {      'type': 'ImBack',      'title': 'aaa2',      'value': 'bbb2'    }  ]}
@@ -622,7 +693,7 @@ namespace LAM.BotFramework
                     };
             await context.PostAsync(replyH);
         }
-        private async Task CarouselCardPrompt(IDialogContext context, string language)
+        private async Task CarouselCardPromptAsync(IDialogContext context, string language)
         {
             var replyH = context.MakeMessage();
 
@@ -873,7 +944,7 @@ namespace LAM.BotFramework
             string Lresult = "";
             try
             {
-                Lresult = await LUIS.getLUISresult(sURL, result);
+                Lresult = await LUIS.getLUISresultAsync(sURL, result);
 
                 //v2
                 LUISresultv2 LRv2 = JsonConvert.DeserializeObject<LUISresultv2>(Lresult);

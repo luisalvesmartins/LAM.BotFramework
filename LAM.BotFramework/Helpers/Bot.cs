@@ -15,7 +15,7 @@ namespace LAM.BotFramework.Helpers
     /// </summary>
     public static class Bot
     {
-        public static async void ImTyping(Activity activity)
+        public static async void ImTypingAsync(Activity activity)
         {
             //Best practice: I'm typing
             var connector = new ConnectorClient(new Uri(activity.ServiceUrl));

@@ -20,7 +20,7 @@ namespace DemoBot
         {
             if (activity.Type == ActivityTypes.Message)
             {
-                Bot.ImTyping(activity);
+                Bot.ImTypingAsync(activity);
 
                 await Conversation.SendAsync(activity, () => new MainDialog());
             }

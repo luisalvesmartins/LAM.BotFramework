@@ -32,25 +32,31 @@ namespace LAM.BotFramework
         }
         public async static Task Initialization(string storageConnectionString, string scenarioTableName, string scenarioName, string conversationLogTableName)
         {
-            Global.DebugServicesURL = CloudConfigurationManager.GetSetting("LAMBF.DebugServicesURL");
-
-            ScenarioName = scenarioName;
-
-            CloudTableClient tableClient = CloudStorage.GetTableClient(storageConnectionString);
-
-            // Run these initlializations in parallel
-            await ConversationLog.GetTableReference(tableClient, conversationLogTableName).CreateIfNotExistsAsync();
-            await Scenario.GetTableReference(tableClient, scenarioTableName).CreateIfNotExistsAsync();
-
-            tableLog = ConversationLog.GetTableReference(tableClient, conversationLogTableName);
-            tableScenario = Scenario.GetTableReference(tableClient, scenarioTableName);
-
-            //INIT TRANSLATOR
-            string TranslateKey = CloudConfigurationManager.GetSetting("LAMBF.TranslatorKey");
-            if (!string.IsNullOrEmpty(TranslateKey))
+            try
             {
-                Global.admAuth = new ADMAuthentication(TranslateKey);
-                Global.TranslationEnabled = true; 
+                Global.DebugServicesURL = CloudConfigurationManager.GetSetting("LAMBF.DebugServicesURL");
+
+                ScenarioName = scenarioName;
+
+                CloudTableClient tableClient = CloudStorage.GetTableClient(storageConnectionString);
+
+                // Run these initlializations in parallel
+                await ConversationLog.GetTableReference(tableClient, conversationLogTableName).CreateIfNotExistsAsync();
+                await Scenario.GetTableReference(tableClient, scenarioTableName).CreateIfNotExistsAsync();
+
+                tableLog = ConversationLog.GetTableReference(tableClient, conversationLogTableName);
+                tableScenario = Scenario.GetTableReference(tableClient, scenarioTableName);
+
+                //INIT TRANSLATOR
+                string TranslateKey = CloudConfigurationManager.GetSetting("LAMBF.TranslatorKey");
+                if (!string.IsNullOrEmpty(TranslateKey))
+                {
+                    Global.admAuth = new ADMAuthentication(TranslateKey);
+                    Global.TranslationEnabled = true;
+                }
+            }
+            catch (Exception e)
+            {
             }
 
         }

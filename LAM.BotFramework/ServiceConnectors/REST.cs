@@ -15,7 +15,7 @@ namespace LAM.BotFramework.ServiceConnectors
         /// <param name="URL"></param>
         /// <param name="postData"></param>
         /// <returns></returns>
-        public static async Task<BotProps> Post(string URL, BotProps postData)
+        public static async Task<BotProps> PostAsync(string URL, BotProps postData)
         {
             Uri U = new Uri(URL);
             if (!string.IsNullOrEmpty(Global.DebugServicesURL ))
@@ -39,14 +39,13 @@ namespace LAM.BotFramework.ServiceConnectors
         /// </summary>
         /// <param name="URL"></param>
         /// <returns></returns>
-        public static async Task<string> Get(string URL, bool Debugable)
+        public static async Task<string> GetAsync(string URL, bool Debugable)
         {
             HttpClient client = new HttpClient();
             if (Debugable && !string.IsNullOrEmpty(Global.DebugServicesURL))
             {
                 Uri U = new Uri(URL);
-                int p = URL.IndexOf(U.Host) + U.Host.Length;
-                URL = Global.DebugServicesURL + URL.Substring(p);
+                URL = Global.DebugServicesURL + U.PathAndQuery;
             }
             return await client.GetStringAsync(URL);
         }
