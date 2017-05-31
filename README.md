@@ -3,7 +3,7 @@
 #### A Data Driven Framework for Microsoft Bot Framework
 
 ```
-Latest version 1.0.3.0
+Latest version 1.0.3.1
 ```
 
 The Bot flow is defined by a data structure.

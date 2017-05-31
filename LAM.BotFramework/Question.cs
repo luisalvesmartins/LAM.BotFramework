@@ -356,21 +356,29 @@ namespace LAM.BotFramework
                         break;
                     case "Expression":
                         string sRes = "Yes";
+                        CurrentQuestionRow.QuestionText = CurrentQuestionRow.QuestionText.Replace("'", @"""");
                         if (CurrentQuestionRow.QuestionText.IndexOf(Global.PragmaOpen) > -1 && CurrentQuestionRow.QuestionText.IndexOf(Global.PragmaClose) > -1)
                         {
                             sRes = "No";
                         }
                         else
                         {
-                            var result = CSharpScript.EvaluateAsync(CurrentQuestionRow.QuestionText).Result;
-                            if (result.GetType().Name == "String")
-                                sRes = "Yes";
-                            else
+                            try
                             {
-                                if ((bool)result)
+                                var result = CSharpScript.EvaluateAsync(CurrentQuestionRow.QuestionText).Result;
+                                if (result.GetType().Name == "String")
                                     sRes = "Yes";
                                 else
-                                    sRes = "No";
+                                {
+                                    if ((bool)result)
+                                        sRes = "Yes";
+                                    else
+                                        sRes = "No";
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                sRes = "No";
                             }
                         }
                         await ProcessResponseAsync(context, sRes, null);
