@@ -33,6 +33,7 @@ Return must be a Dictionary<string,string> with the variables to integrate to th
    ```javascript
    __http://address/api/GroupActions?Key=#!KEY!#&action=CONNECT&personGroupId=#!ID!#&faceId=123__
    ```
+   if the key LAMBF.DebugServicesURL is present the address will be replaced by the key value.
 
 2. METHOD CALL
 Notation:
@@ -71,7 +72,7 @@ Displays the message
 
 ### MessageEnd
 
-Displays the message and ends the dialog
+Displays the message and ends the dialog flow
 
 ### Search
 
@@ -87,7 +88,8 @@ Exits the SUB - useful only when there is no activity to perform at the end of t
 
 ### LUIS
 
-Enable LUIS calls (to be documented)
+Enable LUIS calls. Use the wizard button to build the options. The intents are defined in the connector text to other activities. Identified entities are automatically stored in state variables.
+(to be documented further)
 
 ### QnAMaker
 

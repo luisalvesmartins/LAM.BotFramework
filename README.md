@@ -52,7 +52,7 @@ To use the Framework you will need to:
     <add key="LAMBF.LogTableName" value="<YourLogTableName>" />
     <!-- This is the URL to debug local API calls -->
     <add key="LAMBF.DebugServicesURL" value="" /> 
-    <!-- If you are using Translartion Services -->
+    <!-- If you are using Translation Services -->
     <add key="LAMBF.TranslatorKey" value="<id>" />
 ```
 3. Call the Framework dialog
