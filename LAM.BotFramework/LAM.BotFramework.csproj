@@ -192,6 +192,7 @@
   <ItemGroup>
     <Compile Include="Controllers\LogController.cs" />
     <Compile Include="Dialogs\MainDialog.cs" />
+    <Compile Include="Entities\APILocal.cs" />
     <Compile Include="Entities\BaseEntity.cs" />
     <Compile Include="Entities\BotProps.cs" />
     <Compile Include="Entities\ConversationLog.cs" />

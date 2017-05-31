@@ -13,6 +13,8 @@ using LAM.BotFramework.Entities;
 using LAM.BotFramework.ServiceConnectors;
 using LAM.BotFramework.Helpers;
 using AdaptiveCards;
+using System.Reflection;
+using System.Runtime.Remoting;
 
 namespace LAM.BotFramework
 {
@@ -119,7 +121,7 @@ namespace LAM.BotFramework
                     //IF EXISTS, PROCESS IT
                     if (!string.IsNullOrEmpty(value))
                     {
-                        await ProcessResponse(context, value, null);
+                        await ProcessResponseAsync(context, value, null);
                         return;
                     }
                 }
@@ -158,23 +160,32 @@ namespace LAM.BotFramework
 
             #region HANDLE HERO info
             bool bHasHero = false;
-            if (CurrentQuestionRow.QuestionType != "AdaptiveCard" && CurrentQuestionRow.QuestionType != "AdaptiveCardShow")
+            if (CurrentQuestionRow.QuestionType != "AdaptiveCard" && CurrentQuestionRow.QuestionType != "AdaptiveCardShow" && CurrentQuestionRow.QuestionType!="API" )
             {
-                if (CurrentQuestionRow.QuestionText.IndexOf("{") == 0)
+                try
                 {
-                    await HeroCardPromptAsync(context, language);
-                    LogPrompt = CurrentQuestionRow.QuestionText;
-                    CurrentQuestionRow.QuestionText = "";
-                    PromptTranslated = "";
-                    bHasHero = true;
+                    //HERO CARD
+                    if (CurrentQuestionRow.QuestionText.IndexOf("{") == 0)
+                    {
+                        await HeroCardPromptAsync(context, language);
+                        LogPrompt = CurrentQuestionRow.QuestionText;
+                        CurrentQuestionRow.QuestionText = "";
+                        PromptTranslated = "";
+                        bHasHero = true;
+                    }
+                    //CAROUSEL CARD
+                    if (CurrentQuestionRow.QuestionText.IndexOf("[") == 0)
+                    {
+                        await CarouselCardPromptAsync(context, language);
+                        LogPrompt = CurrentQuestionRow.QuestionText;
+                        CurrentQuestionRow.QuestionText = "";
+                        PromptTranslated = "";
+                        bHasHero = true;
+                    }
                 }
-                if (CurrentQuestionRow.QuestionText.IndexOf("[") == 0)
+                catch (Exception)
                 {
-                    await CarouselCardPromptAsync(context, language);
-                    LogPrompt = CurrentQuestionRow.QuestionText;
-                    CurrentQuestionRow.QuestionText = "";
-                    PromptTranslated = "";
-                    bHasHero = true;
+                    //NOT VALID
                 }
             }
             #endregion
@@ -192,16 +203,16 @@ namespace LAM.BotFramework
                             ResultTranslated = Translator.Translate(resultT, language, "en");
                         }
 
-                        await ProcessResponseLUIS(context, ResultTranslated);
+                        await ProcessResponseLUISAsync(context, ResultTranslated);
                         break;
                     case "QnAMaker":
-                        await ProcessResponseQnAMaker(context, Message);
+                        await ProcessResponseQnAMakerAsync(context, Message);
                         break;
                     case "Search":
-                        await ProcessResponseSearch(context, Message);
+                        await ProcessResponseSearchAsync(context, Message);
                         break;
                     default:
-                        await ProcessResponse(context, Message,null);
+                        await ProcessResponseAsync(context, Message,null);
                         break;
                 }
                 #endregion
@@ -239,21 +250,44 @@ namespace LAM.BotFramework
                             } };
                         await context.PostAsync(replyToConversationShow);
 
-                        await ProcessResponse(context, "", null);
+                        await ProcessResponseAsync(context, "", null);
                         break;
                     case "API":
-                        //GET
-                        string json = await REST.GetAsync(CurrentQuestionRow.QuestionText, true);
+                        Dictionary<string, string> resultDict = new Dictionary<string, string>();
+                        string errMessage = "";
+                        if (LogPrompt.StartsWith("{")) {
+                            try
+                            {
+                                resultDict=await(Task< Dictionary<string, string>>) DynamicCall(LogPrompt);
+                                
+                            }
+                            catch (Exception e)
+                            {
+                                errMessage = e.Message;
+                            }
 
-                        Dictionary<string, string> list = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+                        }
+                        else
+                        {
+                            //GET
+                            try
+                            {
+                                string json = await REST.GetAsync(CurrentQuestionRow.QuestionText, true);
 
+                                resultDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+                            }
+                            catch (Exception e)
+                            {
+                                errMessage = e.Message;
+
+                            }
+                        }
                         //READ RETURN DICTIONARY
-                        foreach (var item in list)
+                        foreach (var item in resultDict)
                         {
                             PropertiesStore(item.Key, item.Value);
                         }
-
-                        await ProcessResponse(context, "", null);
+                        await ProcessResponseAsync(context, errMessage, null);
                         break;
                     case "APIFULL":
                         //SET THE CONTEXT
@@ -295,7 +329,21 @@ namespace LAM.BotFramework
 
                         }
 
-                        await ProcessResponse(context, BP.Result, NextQ);
+                        await ProcessResponseAsync(context, BP.Result, NextQ);
+                        break;
+                    case "Attachment":
+                        if (bHasHero)
+                        {
+                            context.Wait(ProcessResponseBypassAsync);
+                        }
+                        else
+                            PromptDialog.Attachment(context,
+                                            MessageLoopAttachment,
+                                           PromptTranslated);//,RetryPrompt);
+                        break;
+                    case "EndSub":
+                        //THIS IS A MOVENEXT, USEFUL TO EXIT SUBS
+                        await ProcessResponseAsync(context, "", null);
                         break;
                     case "SUB":
                         //ADD TO THE STACK
@@ -304,7 +352,7 @@ namespace LAM.BotFramework
                         //                    GOTO CurrentQuestionRow.options
                         int nextq = int.Parse(CurrentQuestionRow.Options);
                         //AT END OF THE SUB, RETURN TO THE STACK
-                        await ProcessResponse(context, "", nextq);
+                        await ProcessResponseAsync(context, "", nextq);
                         break;
                     case "Expression":
                         string sRes = "Yes";
@@ -325,27 +373,27 @@ namespace LAM.BotFramework
                                     sRes = "No";
                             }
                         }
-                        await ProcessResponse(context, sRes, null);
+                        await ProcessResponseAsync(context, sRes, null);
                         break;
                     case "LUIS":
                         if (bHasHero)
                         {
-                            context.Wait(ProcessResponseLUISBypass);
+                            context.Wait(ProcessResponseLUISBypassAsync);
                         }
                         else
                             PromptDialog.Text(context,
-                                                MessageLoopLUIS,
+                                                MessageLoopLUISAsync,
                                                 PromptTranslated,
                                                 RetryPrompt);
                         break;
                     case "Text":
                         if (bHasHero)
                         {
-                            context.Wait(ProcessResponseBypass);
+                            context.Wait(ProcessResponseBypassAsync);
                         }
                         else
                             PromptDialog.Text(context,
-                                            MessageLoop,
+                                            MessageLoopAsync,
                                             PromptTranslated,
                                             RetryPrompt);
                         break;
@@ -392,7 +440,7 @@ namespace LAM.BotFramework
                         await context.PostAsync(reply);
                         //await ProcessResponse(context, "");
                         PromptDialog.Text(context,
-                                            MessageLoop,
+                                            MessageLoopAsync,
                                             PromptTranslated,
                                             RetryPrompt);
                         break;
@@ -407,7 +455,7 @@ namespace LAM.BotFramework
                             }
                             else
                                 PromptDialog.Text(context,
-                                                    MessageLoopQnAMaker,
+                                                    MessageLoopQnAMakerAsync,
                                                     PromptTranslated,
                                                     RetryPrompt
                                                     );
@@ -421,7 +469,7 @@ namespace LAM.BotFramework
                                 LUISresultv2 LRV2 = JsonConvert.DeserializeObject<LUISresultv2>(result);
                                 result = LRV2.query;
                             }
-                            await ProcessResponseQnAMaker(context, result);
+                            await ProcessResponseQnAMakerAsync(context, result);
                         }
                         break;
                     case "Search":
@@ -431,11 +479,11 @@ namespace LAM.BotFramework
                         {
                             if (bHasHero)
                             {
-                                context.Wait(ProcessResponseSearchBypass);
+                                context.Wait(ProcessResponseSearchBypassAsync);
                             }
                             else
                                 PromptDialog.Text(context,
-                                                    MessageLoopSearch,
+                                                    MessageLoopSearchAsync,
                                                     PromptTranslated,
                                                     RetryPrompt
                                                     );
@@ -448,13 +496,13 @@ namespace LAM.BotFramework
                                     LUISresultv2 LRV2 = JsonConvert.DeserializeObject<LUISresultv2>(result);
                                     result = LRV2.query;
                                 }
-                                await ProcessResponseSearch(context, result);
+                                await ProcessResponseSearchAsync(context, result);
                         }
                         break;
                     case "Choice":
                         string[] op = CurrentQuestionRow.Options.Split(',');
                         PromptDialog.Choice(context,
-                                                MessageLoop,
+                                                MessageLoopAsync,
                                                 op,
                                                 PromptTranslated,
                                                 RetryPrompt,
@@ -482,7 +530,7 @@ namespace LAM.BotFramework
                         }
 
                         PromptDialog.Choice(context,
-                                                MessageLoop,
+                                                MessageLoopAsync,
                                                 opA,
                                                 PromptTranslated,
                                                 RetryPrompt,
@@ -518,27 +566,27 @@ namespace LAM.BotFramework
                             Bot.GetHeroCard(item1.title, item1.subtitle, item1.text, new List<CardImage>() { new CardImage(url: item1.imageURL) }, LCA)
                         };
                         await context.PostAsync(replyH);
-                        await ProcessResponse(context, "", null);
+                        await ProcessResponseAsync(context, "", null);
                         break;
                     case "Boolean":
                         if (bHasHero)
                         {
-                            context.Wait(ProcessResponseBypass);
+                            context.Wait(ProcessResponseBypassAsync);
                         }
                         else
                             PromptDialog.Confirm(context,
-                                            MessageLoop,
+                                            MessageLoopAsync,
                                             PromptTranslated,
                                             RetryPrompt);
                         break;
                     case "Integer":
                         if (bHasHero)
                         {
-                            context.Wait(ProcessResponseBypass);
+                            context.Wait(ProcessResponseBypassAsync);
                         }
                         else
                             PromptDialog.Number(context,
-                                            MessageLoop,
+                                            MessageLoopAsync,
                                             PromptTranslated,
                                             RetryPrompt);
                         break;
@@ -547,7 +595,7 @@ namespace LAM.BotFramework
                         {
                             await context.PostAsync(PromptTranslated);
                         }
-                        await ProcessResponse(context, "", null);
+                        await ProcessResponseAsync(context, "", null);
                         break;
                     case "MessageEnd":
                         if (!bHasHero)
@@ -559,7 +607,7 @@ namespace LAM.BotFramework
                         break;
                     case "ResetAllVars":
                         this.Properties=new Dictionary<string, string>();
-                        await ProcessResponse(context, "", null);
+                        await ProcessResponseAsync(context, "", null);
                         break;
                     default:
                         break;
@@ -568,13 +616,32 @@ namespace LAM.BotFramework
             }
         }
 
-        private string KeyReplace(string text)
+        private async Task<Dictionary<string, string>> DynamicCall(string instruction)
+        {
+            APILocal apiLocalCall = JsonConvert.DeserializeObject<APILocal>(instruction);
+
+            ObjectHandle handle = Activator.CreateInstance(apiLocalCall.AssemblyName, apiLocalCall.TypeName);
+            Object p = handle.Unwrap();
+            Type t = p.GetType();
+            MethodInfo theMethod = t.GetMethod(apiLocalCall.Method);
+
+            for (int i = 0; i < apiLocalCall.Parameters.Count(); i++)
+            {
+                apiLocalCall.Parameters[i] = KeyReplace(apiLocalCall.Parameters[i]);
+            }
+            return await(Task<Dictionary<string, string>>) theMethod.Invoke(p, apiLocalCall.Parameters);
+        }
+
+        public string KeyReplace(string text)
         {
             //REPLACE KEYS STATED WITH PragmaOpen and PragmaClose
             Dictionary<string, string> D = this.Properties;
-            foreach (var item in D)
+            if (D != null)
             {
-                text = ReplaceString(text, Global.PragmaOpen + item.Key.ToUpper() + Global.PragmaClose, item.Value, StringComparison.CurrentCultureIgnoreCase);
+                foreach (var item in D)
+                {
+                    text = ReplaceString(text, Global.PragmaOpen + item.Key.ToUpper() + Global.PragmaClose, item.Value, StringComparison.CurrentCultureIgnoreCase);
+                }
             }
             return text;
         }
@@ -650,7 +717,7 @@ namespace LAM.BotFramework
             }
             ConversationLog.Log(context, "USER", v, LogToken, Q.CurrentQuestion);
 
-            await ProcessResponse(context, v, null);
+            await ProcessResponseAsync(context, v, null);
         }
 
         private async Task HeroCardPromptAsync(IDialogContext context, string language)
@@ -743,56 +810,120 @@ namespace LAM.BotFramework
         }
 
         #region MessageLoop
-        public async Task MessageLoop(IDialogContext context, IAwaitable<string> message)
+
+        private async Task MessageLoopAttachment(IDialogContext context, IAwaitable<IEnumerable<Attachment>> result)
+        {
+            IEnumerable<Attachment> attachResult = await result;
+
+            await ProcessResponseAsync(context, attachResult);
+        }
+        public async Task MessageLoopAsync(IDialogContext context, IAwaitable<string> message)
         {
             string result = await message;
 
-            await ProcessResponse(context, result, null);
+            await ProcessResponseAsync(context, result, null);
         }
-        public async Task MessageLoop(IDialogContext context, IAwaitable<bool> message)
+        public async Task MessageLoopAsync(IDialogContext context, IAwaitable<bool> message)
         {
             string result = (await message).ToString();
 
-            await ProcessResponse(context, result, null);
+            await ProcessResponseAsync(context, result, null);
         }
-        public async Task MessageLoop(IDialogContext context, IAwaitable<long> message)
+        public async Task MessageLoopAsync(IDialogContext context, IAwaitable<long> message)
         {
             string result = (await message).ToString();
 
-            await ProcessResponse(context, result, null);
+            await ProcessResponseAsync(context, result, null);
         }
-        public async Task MessageLoopLUIS(IDialogContext context, IAwaitable<string> message)
+        public async Task MessageLoopLUISAsync(IDialogContext context, IAwaitable<string> message)
         {
             string result = await message;
 
             string language = GetLanguage(context);
             string ResultTranslated = Translator.Translate(result, language, "en");
 
-            await ProcessResponseLUIS(context, ResultTranslated);
+            await ProcessResponseLUISAsync(context, ResultTranslated);
         }
-        public async Task MessageLoopSearch(IDialogContext context, IAwaitable<string> message)
+        public async Task MessageLoopSearchAsync(IDialogContext context, IAwaitable<string> message)
         {
             string result = await message;
 
-            await ProcessResponseSearch(context, result);
+            await ProcessResponseSearchAsync(context, result);
         }
-        public async Task MessageLoopQnAMaker(IDialogContext context, IAwaitable<string> message)
+        public async Task MessageLoopQnAMakerAsync(IDialogContext context, IAwaitable<string> message)
         {
             string result = await message;
 
-            await ProcessResponseQnAMaker(context, result);
+            await ProcessResponseQnAMakerAsync(context, result);
         }
         #endregion
 
         #region ProcessResponse
-        private async Task ProcessResponseLUISBypass(IDialogContext context, IAwaitable<object> result)
+        protected async Task ProcessResponseAsync(IDialogContext context, IEnumerable<Attachment> result)
+        {
+            Question Q = new Question(context);
+            List<QuestionRow> LQJ = Q.Questions();
+            QuestionRow QJ = LQJ[Q.CurrentQuestion];
+
+            Dictionary<string, string>  resultDict = new Dictionary<string, string>();
+            string errMessage = "";
+            try
+            {
+                APILocal apiLocalCall = JsonConvert.DeserializeObject<APILocal>(QJ.Options);
+
+                ObjectHandle handle = Activator.CreateInstance(apiLocalCall.AssemblyName, apiLocalCall.TypeName);
+                Object p = handle.Unwrap();
+                Type t = p.GetType();
+                MethodInfo theMethod = t.GetMethod(apiLocalCall.Method);
+
+                List<object> L = new List<object>();
+                for (int i = 0; i < apiLocalCall.Parameters.Count(); i++)
+                {
+                    apiLocalCall.Parameters[i] = Q.KeyReplace(apiLocalCall.Parameters[i]);
+                    L.Add(apiLocalCall.Parameters[i]);
+                }
+                L.Add(result);
+                resultDict=await (Task<Dictionary<string, string>>)theMethod.Invoke(p, L.ToArray());
+
+            }
+            catch (Exception e)
+            {
+                errMessage = e.Message;
+            }
+            //READ RETURN DICTIONARY
+            foreach (var item in resultDict)
+            {
+                Q.PropertiesStore(item.Key, item.Value);
+            }
+
+
+            ConversationLog.Log(context, "USER", errMessage, LogToken, Q.CurrentQuestion);
+
+            //Store variable
+            //Q.PropertiesStore(QJ.NodeName, result);
+
+            Q.CurrentQuestion++;
+            Q.MoveNextStep(QJ, "");
+
+            if (Q.CurrentQuestion >= LQJ.Count)
+            {
+                context.Done(true);
+            }
+            else
+            {
+                //NEXT QUESTION
+                Q.Load(LQJ[Q.CurrentQuestion]);
+                await Q.Execute(context, null);
+            }
+        }
+        private async Task ProcessResponseLUISBypassAsync(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
 
             string language = GetLanguage(context);
             string ResultTranslated = Translator.Translate(act.Text, language, "en");
 
-            await ProcessResponseLUIS(context, ResultTranslated);
+            await ProcessResponseLUISAsync(context, ResultTranslated);
         }
         private async Task ProcessResponseQnABypass(IDialogContext context, IAwaitable<object> result)
         {
@@ -801,27 +932,27 @@ namespace LAM.BotFramework
             string language = GetLanguage(context);
             string ResultTranslated = Translator.Translate(act.Text, language, "en");
 
-            await ProcessResponseQnAMaker(context, ResultTranslated);
+            await ProcessResponseQnAMakerAsync(context, ResultTranslated);
         }
-        private async Task ProcessResponseSearchBypass(IDialogContext context, IAwaitable<object> result)
+        private async Task ProcessResponseSearchBypassAsync(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
 
             string language = GetLanguage(context);
             string ResultTranslated = Translator.Translate(act.Text, language, "en");
 
-            await ProcessResponseSearch(context, ResultTranslated);
+            await ProcessResponseSearchAsync(context, ResultTranslated);
         }
-        private async Task ProcessResponseBypass(IDialogContext context, IAwaitable<object> result)
+        private async Task ProcessResponseBypassAsync(IDialogContext context, IAwaitable<object> result)
         {
             Activity act = (await result) as Activity;
 
             string language = GetLanguage(context);
             string ResultTranslated = Translator.Translate(act.Text, language, "en");
 
-            await ProcessResponse(context, ResultTranslated, null);
+            await ProcessResponseAsync(context, ResultTranslated, null);
         }
-        protected async Task ProcessResponse(IDialogContext context, string result, int? ForceNextQ)
+        protected async Task ProcessResponseAsync(IDialogContext context, string result, int? ForceNextQ)
         {
             Question Q = new Question(context);
             ConversationLog.Log(context, "USER", result, LogToken, Q.CurrentQuestion);
@@ -850,7 +981,7 @@ namespace LAM.BotFramework
                 await Q.Execute(context,null);
             }
         }
-        protected async Task ProcessResponseQnAMaker(IDialogContext context, string result)
+        protected async Task ProcessResponseQnAMakerAsync(IDialogContext context, string result)
         {
             Question Q = new Question(context);
             ConversationLog.Log(context, "USER", result, LogToken, Q.CurrentQuestion);
@@ -885,7 +1016,7 @@ namespace LAM.BotFramework
             }
         }
 
-        protected async Task ProcessResponseSearch(IDialogContext context, string result)
+        protected async Task ProcessResponseSearchAsync(IDialogContext context, string result)
         {
             Question Q = new Question(context);
             ConversationLog.Log(context, "USER", result, LogToken, Q.CurrentQuestion);
@@ -928,7 +1059,7 @@ namespace LAM.BotFramework
             }
         }
 
-        protected async Task ProcessResponseLUIS(IDialogContext context, string result)
+        protected async Task ProcessResponseLUISAsync(IDialogContext context, string result)
         {
             Question Q = new Question(context);
             int currentStepID = Q.CurrentQuestion;

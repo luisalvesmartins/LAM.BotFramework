@@ -3,15 +3,7 @@
 #### A Data Driven Framework for Microsoft Bot Framework
 
 ```
-Update 1.0.1.0:
-- Fix the translation services call to use Azure Key
-- Translator Web.Config key changed to LAMBF.TranslatorKey
-
-
-Update 1.0.0.6:
-- Translation Services
-- URL config to debug API Calls
-- FlowEditor bug fixes
+Latest version 1.0.3.0
 ```
 
 The Bot flow is defined by a data structure.
@@ -74,7 +66,9 @@ As alternative, you can call the Framework from inside your dialog with:
    await Q.Initialize(JSon);
 ```
 
-Please check the LAM.BotFramework.Admin project for utilities and blank template.
+### Activities
+
+The activities are documented [here](Activities.md "Activities description")
 
 ### Sample
 
@@ -108,3 +102,21 @@ and create a new flow.
 This code is in evolution. It will probably not do everything you need, take it as the base to build your own flow driven bots.
 
 And please provide feedback...
+
+
+### Updates 
+```
+Update 1.0.3.0:
+- Added Attachments
+- Enable "Code Behind" API calls
+- Documentation for Activities
+
+Update 1.0.1.0:
+- Fix the translation services call to use Azure Key
+- Translator Web.Config key changed to LAMBF.TranslatorKey
+
+Update 1.0.0.6:
+- Translation Services
+- URL config to debug API Calls
+- FlowEditor bug fixes
+```
