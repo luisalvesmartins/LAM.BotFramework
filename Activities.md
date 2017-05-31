@@ -2,12 +2,18 @@
 
 ### Common properties
 This properties are available to almost all activities:
+
 Node Name - User input will be stored in this variable name
+
 Question - Prompt to be displayed
+
 Type - Type of Activity, see list below
+
 Language Detection - If 'Yes' the framework will detect the language of the user input and will change accordingly.
+
 Bypass question if var is filled - If the variable stated in 'Node Name' is filled then this question is bypassed
 
+All node names are referenced as #!name!#. Case Insensitive
 
 
 ### AdaptiveCard
@@ -24,13 +30,15 @@ Calls a URL or a method.
 Return must be a Dictionary<string,string> with the variables to integrate to the bot state.
 1. URL:
    Example:
+   ```javascript
    __http://address/api/GroupActions?Key=#!KEY!#&action=CONNECT&personGroupId=#!ID!#&faceId=123__
+   ```
 
 2. METHOD CALL
 Notation:
 ```javascript
 {
-	"AssemblyName" : "Bot Application",
+	"AssemblyName" : "Assemblyname",
 	"TypeName" : "Namespace.ClassName",
 	"Method" : "name of method",
 	"parameters":[
