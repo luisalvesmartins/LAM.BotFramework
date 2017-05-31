@@ -24,11 +24,12 @@
                 <button id="b_SAVE" class="fa fa-floppy-o fl" aria-hidden="true" alt="Save"></button>
             </div>
             <hr />
-            <div>Navigate</div>
+            <button id="b_Ms" alt="Message">Add Activity</button>
+            <!--<div>Navigate</div>
             <button id="b_LU">LUIS</button>
             <button id="b_CA">Choice<br />Action</button>
             <div>Prompt</div>
-            <!--<button id="b_HE">Hero</button>-->
+            <button id="b_HE">Hero</button>
             <button id="b_CH">Choice</button>
             <button id="b_TE">Text</button>
             <div>Message</div>
@@ -44,7 +45,7 @@
             <div>Menu</div>
             <button id="b_USER">MENU</button>
             <hr />
-            <button id="b_STAT">STAT</button>
+            <button id="b_STAT">STAT</button>-->
         </div>
         <div id="cnvContainer" class="cnvContainer">
             <canvas id="cnv" width="3000" height="3000"></canvas>
@@ -67,7 +68,7 @@
                     <div class="clear"></div>
                     <div id="propdivq">
                         <div id="propqtext">Question</div>
-                        <textarea id="prop_q" style="width:230px" rows="6" onkeyup="SideBar.TextChange()"></textarea>
+                        <textarea id="prop_q" style="width:230px;font-size:12px;" rows="10" onkeyup="SideBar.TextChange()"></textarea>
                     </div>
                     <div id="propdivsub" style="display:none">
                         <div>Routine</div>
@@ -77,7 +78,9 @@
                         <div>Type</div>
                         <div>
                             <select class="fl" id="prop_type" onchange="SideBar.TypeChange()">
-                                <option value="API">API</option>
+                                <option value="AdaptiveCard">AdaptiveCard</option>
+                                <option value="AdaptiveCardShow">AdaptiveCardShow</option>                                <option value="API">API</option>
+                                <option value="Attachment">Attachment</option>
                                 <option value="Boolean">Boolean</option>
                                 <option value="Choice">Choice</option>
                                 <option value="ChoiceAction">ChoiceAction</option>
@@ -89,6 +92,7 @@
                                 <option value="QnAMaker">QnAMaker</option>
                                 <option value="Search">Search</option>
                                 <option value="SUB">SUB</option>
+                                <option value="EndSub">EndSub</option>
                                 <option value="Text">Text</option>
                                 <option value="ResetAllVars">ResetAllVars</option>
                             </select>
@@ -106,7 +110,7 @@
                     </div>
                     <div id="propdivoptions" style="display:none">
                         <div>Options</div>
-                        <input type="text" id="prop_options" onkeyup="SideBar.PropChange()" />
+                        <textarea id="prop_options" style="width:230px" rows="10" onkeyup="SideBar.PropChange()"></textarea>
                     </div>
                     <div id="divkeys" style="display:none">
                         <div>ConnectionString</div>

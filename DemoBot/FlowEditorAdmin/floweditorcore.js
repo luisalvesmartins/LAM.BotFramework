@@ -1,5 +1,4 @@
-﻿
-var UserInput = {
+﻿var UserInput = {
     ElementSelected: -1,
     ElementBSelected: -1,
     LinkSelected: -1,
@@ -141,6 +140,9 @@ var UserInput = {
                     }
                 }
             }
+            var round = 5;
+            Cnv.Nodes[UserInput.ElementSelected].x = round * Math.round(Cnv.Nodes[UserInput.ElementSelected].x / round); 
+            Cnv.Nodes[UserInput.ElementSelected].y = round * Math.round(Cnv.Nodes[UserInput.ElementSelected].y / round); 
         }
         Cnv.Draw();
         if (UserInput.ElementSelected != -1)
@@ -209,46 +211,80 @@ var SideBar = {
     DrawDetail: function () {
         //var i = prop_id.value;
         var propType = prop_type.value;
-        $("#butTypeWiz").hide();
-        propdivsub.style.display = "none";
-        propdivq.style.display = "block";
-        propdivnodename.style.display = "block";
-        propdivoptions.style.display = "none";
         propqtext.innerHTML = "Question";
+        $("#butTypeWiz").hide();
+        $("#butTypeWiz").hide();
+        $("#propdivsub").hide();
+        $("#propdivq").show();
+        $("#propdivnodename").show();
+        $("#propdivoptions").hide();
+
         $("#divpreview").show();
         $("#propdivlang").show();
-        $("#propdivbypass").show();
+        $("#propdivbypassnode").show();
         switch (propType) {
+            case "AdaptiveCard":
+                propqtext.innerHTML = "Card Definition";
+                $("#propdivoptions").show();
+                $("#propdivlang").hide();
+                $("#propdivbypassnode").hide();
+                break;
+            case "AdaptiveCardShow":
+                propqtext.innerHTML = "Card Definition";
+                $("#propdivnodename").hide();
+                $("#propdivoptions").hide();
+                $("#propdivlang").hide();
+                $("#propdivbypassnode").hide();
+                break;
+            case "Attachment":
+                $("#propdivlang").hide();
+                $("#propdivoptions").show();
+                $("#propdivbypassnode").hide();
+                break;
             case "API":
                 propqtext.innerHTML = "URL";
-                propdivnodename.style.display = "none";
+                $("#propdivnodename").hide();
                 $("#divpreview").hide();
                 $("#propdivlang").hide();
+                $("#propdivbypassnode").hide();
                 break;
             case "Choice":
-                propdivoptions.style.display = "block";
+                $("#propdivoptions").show();
                 break;
+            case "ChoiceAction":
+                $("#propdivoptions").show();
+                $("#propdivbypassnode").hide();
+                break;
+            case "EndSub":
+                //prop_sub
+                prop_q.value = "";
+                $("#divpreview").hide();
+                $("#propdivsub").hide();
+                $("#propdivq").hide();
+                $("#propdivnodename").hide();
+                $("#propdivlang").hide();
+                $("#propdivbypassnode").hide();
             case "Expression":
                 propqtext.innerHTML = "Expression";
-                propdivnodename.style.display = "none";
+                $("#propdivnodename").hide();
                 $("#divpreview").hide();
                 $("#propdivlang").hide();
-                $("#propdivbypass").hide();
+                $("#propdivbypassnode").hide();
                 break;
             case "LUIS":
                 $("#butTypeWiz").show();
                 break;
             case "Message":
                 propqtext.innerHTML = "Message";
-                propdivnodename.style.display = "none";
+                $("#propdivnodename").hide();
                 $("#propdivlang").hide();
-                $("#propdivbypass").hide();
+                $("#propdivbypassnode").hide();
                 break;
             case "MessageEnd":
                 propqtext.innerHTML = "Message";
-                propdivnodename.style.display = "none";
+                $("#propdivnodename").hide();
                 $("#propdivlang").hide();
-                $("#propdivbypass").hide();
+                $("#propdivbypassnode").hide();
                 break;
             case "QnAMaker":
                 $("#butTypeWiz").show();
@@ -259,10 +295,11 @@ var SideBar = {
             case "SUB":
                 //prop_sub
                 $("#divpreview").hide();
-                propdivsub.style.display = "block";
-                propdivq.style.display = "none";
-                propdivnodename.style.display = "none";
+                $("#propdivsub").show();
+                $("#propdivq").hide();
+                $("#propdivnodename").hide();
                 $("#propdivlang").hide();
+                $("#propdivbypassnode").hide();
 
                 var x = document.getElementById("prop_sub");
                 while (x.length > 0)
@@ -275,9 +312,16 @@ var SideBar = {
                 }
                 x.value = prop_q.value;
                 break;
+            case "ResetAllVars":
+                prop_q.value = "";
+                $("#propdivq").hide();
+                $("#propdivnodename").hide();
+                $("#propdivlang").hide();
+                $("#propdivbypassnode").hide();
+                break;
         }
         SideBar.Preview(prop_q.value, propType)
-        divwizardmain.style.display = "block";
+        $("#divwizardmain").show();
     },
     TypeWiz: function () {
         switch ($("#prop_type").val()) {
@@ -500,12 +544,6 @@ var Cnv = {
         this.ctx = canvas.getContext("2d");
 
         this.Regions = ["main"];
-        //var a = "[{\"q\":\"I'm the points card bot, how can I help you?\",\"max\":\"10\",\"var\":\"month\",\"type\":\"LUIS\",\"options\":\"id=3c8c7d6c-17ad-49e9-8d38-d51b18cc7755&subscription-key=fe62ad60f12045d181624da528109724\",\"nextq\":\"[{'intent':'Card.Points','q':'14'},{'intent':'Points.Transfer','q':'2'},{'intent':'Points.Redeem','q':'9'}]\",\"x\":267,\"y\":21},{\"q\":\"\",\"max\":\"\",\"var\":\"\",\"type\":\"MessageEnd\",\"nextq\":\"\",\"x\":558,\"y\":52},{\"q\":\"What is your Card number ?\",\"max\":\"\",\"var\":\"cardnumber\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":30,\"y\":140},{\"q\":\"What is the expiration date ?\",\"max\":\"\",\"var\":\"carddate\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":30,\"y\":200},{\"q\":\"What is the Card number you want to transfer points to?\",\"max\":\"\",\"var\":\"cardTo\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":28,\"y\":288},{\"q\":\"How many points?\",\"max\":\"\",\"var\":\"points\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":30,\"y\":380},{\"q\":\"Please confirm the points transfer\",\"max\":\"\",\"var\":\"\",\"type\":\"ChoiceAction\",\"options\":\"Yes,No\",\"nextq\":\"[{'intent':'Yes','q':'7'},{'intent':'No','q':'8'}]\",\"x\":30,\"y\":440},{\"q\":\"Points transfered\",\"max\":\"\",\"var\":\"\",\"type\":\"Message\",\"options\":\"\",\"nextq\":\"17\",\"x\":60,\"y\":950},{\"q\":\"Points not transfered. Transaction Canceled.\",\"max\":\"\",\"var\":\"\",\"type\":\"Message\",\"options\":\"\",\"nextq\":\"17\",\"x\":210,\"y\":842},{\"q\":\"What is your Card number ?\",\"max\":\"\",\"var\":\"cardnumber\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":272,\"y\":154},{\"q\":\"What is the expiration date ?\",\"max\":\"\",\"var\":\"carddate\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":273,\"y\":231},{\"q\":\"What is the company you want to use to redeem your points?\",\"max\":\"\",\"var\":\"\",\"type\":\"Choice\",\"options\":\"Redcross,Child Foundation\",\"nextq\":\"\",\"x\":273,\"y\":357},{\"q\":\"How many points?\",\"max\":\"\",\"var\":\"points\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":297,\"y\":495},{\"q\":\"Please confirm the points transfer\",\"max\":\"\",\"var\":\"\",\"type\":\"ChoiceAction\",\"options\":\"Yes,No\",\"nextq\":\"[{'intent':'Yes','q':'7'},{'intent':'No','q':'8'}]\",\"x\":256,\"y\":687},{\"q\":\"What is your Card number ?\",\"max\":\"\",\"var\":\"cardnumber\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":529,\"y\":149},{\"q\":\"What is the expiration date ?\",\"max\":\"\",\"var\":\"carddate\",\"type\":\"Integer\",\"options\":\"\",\"nextq\":\"\",\"x\":525,\"y\":272},{\"q\":\"The number of points in your card #!CARDNUMBER!# is 34 546\",\"max\":\"\",\"var\":\"\",\"type\":\"Message\",\"options\":\"\",\"nextq\":\"\",\"x\":544,\"y\":405},{\"q\":\"Please evaluate your experience with the Points Bot (1-5)\",\"max\":\"\",\"var\":\"Feedback\",\"type\":\"Integer\",\"options\":\"\",\"x\":532,\"y\":561},{\"q\":\"Thank you, have a nice day\",\"max\":\"\",\"var\":\"\",\"type\":\"Message\",\"options\":\"\",\"x\":518,\"y\":709}]";
-        var a = '[{\"x\":267,\"y\":21,\"width\":200,\"height\":60,\"text\":\"I am the points card bot, how can I help you?\",\"type\":\"LUIS\",\"node\":\"month\",\"sub\":\"main\",\"options\":\"id=3c8c7d6c-17ad-49e9-8d38-d51b18cc7755&subscription-key=fe62ad60f12045d181624da528109724\",\"nextq\":\"[{\\"intent\\":\\"Card.Points\\",\\"q\\":\\"14\\"},{\\"intent\\":\\"Points.Transfer\\",\\"q\\":\\"2\\"},{\\"intent\\":\\"Points.Redeem\\",\\"q\\":\\"9\\"}]\"},{\"x\":558,\"y\":52,\"width\":200,\"height\":20,\"text\":\"\",\"type\":\"MessageEnd\",\"node\":\"A1\",\"sub\":\"main\",\"nextq\":2},{\"x\":30,\"y\":140,\"width\":200,\"height\":40,\"text\":\"What is your Card number ?\",\"type\":\"Integer\",\"node\":\"cardnumber\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":3}]\"},{\"x\":30,\"y\":200,\"width\":200,\"height\":60,\"text\":\"What is the expiration date ?\",\"type\":\"Integer\",\"node\":\"carddate\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":4}]\"},{\"x\":28,\"y\":288,\"width\":200,\"height\":80,\"text\":\"What is the Card number you want to transfer points to?\",\"type\":\"Integer\",\"node\":\"cardTo\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":5}]\"},{\"x\":30,\"y\":380,\"width\":200,\"height\":40,\"text\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":30,\"y\":440,\"width\":200,\"height\":60,\"text\":\"Please confirm the points transfer\",\"type\":\"ChoiceAction\",\"node\":\"A6\",\"sub\":\"main\",\"options\":\"Yes,No\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":\\"7\\"},{\\"intent\\":\\"No\\",\\"q\\":\\"8\\"}]\"},{\"x\":60,\"y\":950,\"width\":200,\"height\":40,\"text\":\"Points transfered\",\"type\":\"Message\",\"node\":\"A7\",\"sub\":\"main\",\"options\":\"\",\"nextq\":8},{\"x\":210,\"y\":842,\"width\":200,\"height\":60,\"text\":\"Points not transfered. Transaction Canceled.\",\"type\":\"Message\",\"node\":\"A8\",\"sub\":\"main\",\"options\":\"\",\"nextq\":9},{\"x\":272,\"y\":154,\"width\":200,\"height\":40,\"text\":\"What is your Card number ?\",\"type\":\"Integer\",\"node\":\"cardnumber\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":10}]\"},{\"x\":273,\"y\":231,\"width\":200,\"height\":60,\"text\":\"What is the expiration date ?\",\"type\":\"Integer\",\"node\":\"carddate\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":273,\"y\":357,\"width\":200,\"height\":80,\"text\":\"What is the company you want to use to redeem your points?\",\"type\":\"Choice\",\"node\":\"A11\",\"sub\":\"main\",\"options\":\"Redcross,Child Foundation\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":12}]\"},{\"x\":297,\"y\":495,\"width\":200,\"height\":40,\"text\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":13}]\"},{\"x\":256,\"y\":687,\"width\":200,\"height\":60,\"text\":\"Please confirm the points transfer\",\"type\":\"ChoiceAction\",\"node\":\"A13\",\"sub\":\"main\",\"options\":\"Yes,No\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":\\"7\\"},{\\"intent\\":\\"No\\",\\"q\\":\\"8\\"}]\"},{\"x\":529,\"y\":149,\"width\":200,\"height\":40,\"text\":\"What is your Card number ?\",\"type\":\"Integer\",\"node\":\"cardnumber\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":15}]\"},{\"x\":525,\"y\":272,\"width\":200,\"height\":60,\"text\":\"What is the expiration date ?\",\"type\":\"Integer\",\"node\":\"carddate\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":16}]\"},{\"x\":544,\"y\":405,\"width\":200,\"height\":100,\"text\":\"The number of points in your card #!CARDNUMBER!# is 34 546\",\"type\":\"Message\",\"node\":\"A16\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":17}]\"},{\"x\":532,\"y\":561,\"width\":200,\"height\":80,\"text\":\"Please evaluate your experience with the Points Bot (1-5)\",\"type\":\"Integer\",\"node\":\"Feedback\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":18}]\"},{\"x\":518,\"y\":709,\"width\":200,\"height\":40,\"text\":\"Thank you, have a nice day\",\"type\":\"Message\",\"node\":\"A18\",\"sub\":\"main\",\"options\":\"\",\"nextq\":19},{\"x\":150,\"y\":38,\"width\":200,\"height\":60,\"text\":\"Please confirm the points transfer\",\"type\":\"ChoiceAction\",\"node\":\"NODE19\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":20},{\\"intent\\":\\"No\\",\\"q\\":21}]\"},{\"x\":24,\"y\":172,\"width\":200,\"height\":40,\"text\":\"Points Transfered\",\"type\":\"MessageEnd\",\"node\":\"NODE20\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":21},{\"x\":264,\"y\":174,\"width\":200,\"height\":60,\"text\":\"Points not transfered. Transaction Canceled.\",\"type\":\"MessageEnd\",\"node\":\"NODE21\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":22}]';
-        //var a = '[{\"x\":287,\"y\":29,\"width\":200,\"height\":60,\"text\":\"I am the points card bot, how can I help you?\",\"type\":\"LUIS\",\"node\":\"month\",\"sub\":\"main\",\"options\":\"id=3c8c7d6c-17ad-49e9-8d38-d51b18cc7755&subscription-key=fe62ad60f12045d181624da528109724\",\"nextq\":\"[{\\"intent\\":\\"Points.Transfer\\",\\"q\\":14},{\\"intent\\":\\"Points.Redeem\\",\\"q\\":15},{\\"intent\\":\\"Card.Points\\",\\"q\\":16}]\"},{\"x\":54,\"y\":258,\"width\":200,\"height\":80,\"text\":\"What is the Card number you want to transfer points to?\",\"type\":\"Integer\",\"node\":\"cardTo\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":2}]\"},{\"x\":54,\"y\":398.00000000000006,\"width\":200,\"height\":40,\"text\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":287,\"y\":259,\"width\":200,\"height\":80,\"text\":\"What is the company you want to use to redeem your points?\",\"type\":\"Choice\",\"node\":\"A11\",\"sub\":\"main\",\"options\":\"Redcross,Child Foundation\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":4}]\"},{\"x\":289,\"y\":409,\"width\":200,\"height\":40,\"text\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":538,\"y\":253,\"width\":200,\"height\":100,\"text\":\"The number of points in your card #!CARDNUMBER!# is 34 546\",\"type\":\"Message\",\"node\":\"A16\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":470,\"y\":575,\"width\":200,\"height\":80,\"text\":\"Please evaluate your experience with the Points Bot (1-5)\",\"type\":\"Integer\",\"node\":\"Feedback\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":7}]\"},{\"x\":476,\"y\":707,\"width\":200,\"height\":40,\"text\":\"Thank you, have a nice day\",\"type\":\"Message\",\"node\":\"A18\",\"sub\":\"main\",\"options\":\"\",\"nextq\":8},{\"x\":150,\"y\":38,\"width\":200,\"height\":60,\"text\":\"Please confirm the points transfer\",\"type\":\"ChoiceAction\",\"node\":\"NODE19\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":9},{\\"intent\\":\\"No\\",\\"q\\":10}]\"},{\"x\":24,\"y\":172,\"width\":200,\"height\":40,\"text\":\"Points Transfered\",\"type\":\"Message\",\"node\":\"NODE20\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":10},{\"x\":264,\"y\":174,\"width\":200,\"height\":60,\"text\":\"Points not transfered. Transaction Canceled.\",\"type\":\"Message\",\"node\":\"NODE21\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":11},{\"x\":168,\"y\":498,\"width\":200,\"height\":40,\"text\":\"ConfirmPointsTransfer\",\"type\":\"SUB\",\"node\":\"NODE19\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":126,\"y\":42,\"width\":200,\"height\":40,\"text\":\"What is your Card number ?\",\"type\":\"Text\",\"node\":\"NODE18\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":13}]\"},{\"x\":126,\"y\":106,\"width\":200,\"height\":60,\"text\":\"What is the expiration date ?\",\"type\":\"Integer\",\"node\":\"NODE19\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":14},{\"x\":52,\"y\":162,\"width\":200,\"height\":40,\"text\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE20\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":1}]\"},{\"x\":284,\"y\":158,\"width\":200,\"height\":40,\"text\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE17\",\"sub\":\"main\",\"options\":\"\",\"nextq\":16},{\"x\":538,\"y\":158,\"width\":200,\"height\":40,\"text\":\"main\",\"type\":\"SUB\",\"node\":\"NODE18\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":5}]\"}]';
-        var a = '[{\"x\":287,\"y\":29,\"width\":200,\"height\":60,\"text\":\"I am the points card bot, how can I help you?\",\"type\":\"LUIS\",\"node\":\"month\",\"sub\":\"main\",\"options\":\"id=3c8c7d6c-17ad-49e9-8d38-d51b18cc7755&subscription-key=fe62ad60f12045d181624da528109724\",\"nextq\":\"[{\\"intent\\":\\"Points.Transfer\\",\\"q\\":14},{\\"intent\\":\\"Points.Redeem\\",\\"q\\":15},{\\"intent\\":\\"Card.Points\\",\\"q\\":16}]\"},{\"x\":54,\"y\":258,\"width\":200,\"height\":80,\"text\":\"What is the Card number you want to transfer points to?\",\"type\":\"Integer\",\"node\":\"cardTo\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":2}]\"},{\"x\":54,\"y\":398.00000000000006,\"width\":200,\"height\":40,\"text\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":287,\"y\":259,\"width\":200,\"height\":80,\"text\":\"What is the company you want to use to redeem your points?\",\"type\":\"Choice\",\"node\":\"A11\",\"sub\":\"main\",\"options\":\"Redcross,Child Foundation\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":4}]\"},{\"x\":285,\"y\":397,\"width\":200,\"height\":40,\"text\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":530,\"y\":259,\"width\":200,\"height\":100,\"text\":\"The number of points in your card #!CARDNUMBER!# is 34 546\",\"type\":\"Message\",\"node\":\"A16\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":474,\"y\":557,\"width\":200,\"height\":80,\"text\":\"Please evaluate your experience with the Points Bot (1-5)\",\"type\":\"Integer\",\"node\":\"Feedback\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":7}]\"},{\"x\":474,\"y\":679,\"width\":200,\"height\":40,\"text\":\"Thank you, have a nice day\",\"type\":\"MessageEnd\",\"node\":\"A18\",\"sub\":\"main\",\"options\":\"\",\"nextq\":8},{\"x\":150,\"y\":38,\"width\":200,\"height\":60,\"text\":\"Please confirm the points transfer\",\"type\":\"ChoiceAction\",\"node\":\"NODE19\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":9},{\\"intent\\":\\"No\\",\\"q\\":10}]\"},{\"x\":24,\"y\":172,\"width\":200,\"height\":40,\"text\":\"Points Transfered\",\"type\":\"Message\",\"node\":\"NODE20\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":10},{\"x\":264,\"y\":174,\"width\":200,\"height\":60,\"text\":\"Points not transfered. Transaction Canceled.\",\"type\":\"Message\",\"node\":\"NODE21\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":11},{\"x\":168,\"y\":484,\"width\":200,\"height\":40,\"text\":\"ConfirmPointsTransfer\",\"type\":\"SUB\",\"node\":\"NODE19\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":126,\"y\":42,\"width\":200,\"height\":40,\"text\":\"What is your Card number ?\",\"type\":\"Text\",\"node\":\"CARDNUMBER\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":13}]\"},{\"x\":126,\"y\":106,\"width\":200,\"height\":60,\"text\":\"What is the expiration date ?\",\"type\":\"Integer\",\"node\":\"EXPDATE\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":14},{\"x\":52,\"y\":162,\"width\":200,\"height\":40,\"text\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE20\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":1}]\"},{\"x\":284,\"y\":158,\"width\":200,\"height\":40,\"text\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE17\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":3}]\"},{\"x\":538,\"y\":158,\"width\":200,\"height\":40,\"text\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE18\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":5}]\"}]';
-        var a = '[{\"x\":479,\"y\":23,\"width\":200,\"height\":60,\"q\":\"I am the points card bot, how can I help you?\",\"type\":\"LUIS\",\"node\":\"month\",\"sub\":\"main\",\"options\":\"3c8c7d6c-17ad-49e9-8d38-d51b18cc7755?subscription-key=fe62ad60f12045d181624da528109724\",\"nextq\":\"[{\\"intent\\":\\"Points.Redeem\\",\\"q\\":15},{\\"intent\\":\\"Card.Points\\",\\"q\\":16},{\\"intent\\":\\"Points.Transfer\\",\\"q\\":14},{\\"intent\\":\\"None\\",\\"q\\":20}]\"},{\"x\":250,\"y\":294,\"width\":200,\"height\":80,\"q\":\"What is the Card number you want to transfer points to?\",\"type\":\"Integer\",\"node\":\"cardTo\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":2}]\"},{\"x\":244,\"y\":422.00000000000006,\"width\":200,\"height\":40,\"q\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":475,\"y\":297,\"width\":200,\"height\":80,\"q\":\"What is the company you want to use to redeem your points?\",\"type\":\"Choice\",\"node\":\"A11\",\"sub\":\"main\",\"options\":\"Redcross,Child Foundation\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":4}]\"},{\"x\":481,\"y\":423,\"width\":200,\"height\":40,\"q\":\"How many points?\",\"type\":\"Integer\",\"node\":\"points\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":11}]\"},{\"x\":702,\"y\":285,\"width\":200,\"height\":100,\"q\":\"The number of points in your card #!CARDNUMBER!# is 34 546\",\"type\":\"Message\",\"node\":\"A16\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":636,\"y\":605,\"width\":200,\"height\":80,\"q\":\"Please evaluate your experience with the Points Bot (1-5)\",\"type\":\"Integer\",\"node\":\"Feedback\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":7}]\"},{\"x\":480,\"y\":717,\"width\":200,\"height\":40,\"q\":\"Thank you, have a nice day\",\"type\":\"MessageEnd\",\"node\":\"A18\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"-1\"},{\"x\":150,\"y\":38,\"width\":200,\"height\":60,\"q\":\"Please confirm the points transfer\",\"type\":\"ChoiceAction\",\"node\":\"NODE19\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":9},{\\"intent\\":\\"No\\",\\"q\\":10}]\"},{\"x\":24,\"y\":172,\"width\":200,\"height\":40,\"q\":\"Points Transfered\",\"type\":\"Message\",\"node\":\"NODE20\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":\"-1\"},{\"x\":264,\"y\":174,\"width\":200,\"height\":60,\"q\":\"Points not transfered. Transaction Canceled.\",\"type\":\"Message\",\"node\":\"NODE21\",\"sub\":\"ConfirmPointsTransfer\",\"options\":\"\",\"nextq\":\"-1\"},{\"x\":352,\"y\":530,\"width\":200,\"height\":40,\"q\":\"ConfirmPointsTransfer\",\"type\":\"SUB\",\"node\":\"NODE19\",\"sub\":\"main\",\"options\":8,\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":6}]\"},{\"x\":538,\"y\":140,\"width\":200,\"height\":40,\"q\":\"What is your Card number ?\",\"type\":\"Text\",\"node\":\"CARDNUMBER\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":18}]\"},{\"x\":528,\"y\":304,\"width\":200,\"height\":60,\"q\":\"What is the expiration date ?\",\"type\":\"Integer\",\"node\":\"EXPIRATIONDATE\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":19}]\"},{\"x\":256,\"y\":166,\"width\":200,\"height\":40,\"q\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE20\",\"sub\":\"main\",\"options\":17,\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":1}]\"},{\"x\":478,\"y\":168,\"width\":200,\"height\":40,\"q\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE17\",\"sub\":\"main\",\"options\":17,\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":3}]\"},{\"x\":698,\"y\":168,\"width\":200,\"height\":40,\"q\":\"CardNumber\",\"type\":\"SUB\",\"node\":\"NODE18\",\"sub\":\"main\",\"options\":17,\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":5}]\"},{\"x\":330,\"y\":26,\"width\":200,\"height\":40,\"q\":\"#!CARDNUMBER!#>0\",\"type\":\"Expression\",\"node\":\"NODE18\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":18},{\\"intent\\":\\"No\\",\\"q\\":12}]\"},{\"x\":224,\"y\":212,\"width\":200,\"height\":40,\"q\":\"\\"#!EXPIRATIONDATE!#\\"\",\"type\":\"Expression\",\"node\":\"NODE19\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"No\\",\\"q\\":13},{\\"intent\\":\\"Yes\\",\\"q\\":19}]\"},{\"x\":128,\"y\":424,\"width\":200,\"height\":100,\"q\":\"You selected card #!CARDNUMBER!# with expiration date #!EXPIRATIONDATE!#\",\"type\":\"Message\",\"node\":\"NODE20\",\"sub\":\"CardNumber\",\"options\":\"\",\"nextq\":\"-1\"},{\"x\":38,\"y\":136,\"width\":200,\"height\":60,\"q\":\"Can you please reformulate your question?\",\"type\":\"Message\",\"node\":\"NODE20\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":0}]\"}]';
-        var a = '[{\"x\":155,\"y\":51,\"width\":200,\"height\":60,\"q\":\"What is your level of Energy ?(1-10)\",\"type\":\"Integer\",\"node\":\"energy\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":1}]\"},{\"x\":186,\"y\":153,\"width\":200,\"height\":40,\"q\":\"How was your Sleep?(1-10)\",\"type\":\"Integer\",\"node\":\"sleep\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":2}]\"},{\"x\":215,\"y\":251,\"width\":200,\"height\":60,\"q\":\"How is your Soreness?(1-10)\",\"type\":\"Integer\",\"node\":\"soreness\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":3}]\"},{\"x\":279,\"y\":354,\"width\":200,\"height\":60,\"q\":\"What is your Stress level?(1-10)\",\"type\":\"Choice\",\"node\":\"stress\",\"sub\":\"main\",\"options\":\"1,2,3,4,5,6,7,8,9,10\",\"nextq\":\"[{\\"intent\\":\\"\\",\\"q\\":4}]\"},{\"x\":323,\"y\":471,\"width\":200,\"height\":40,\"q\":\"Thank you, have a nice day\",\"type\":\"Message\",\"node\":\"A4\",\"sub\":\"main\",\"options\":\"\",\"nextq\":\"-1\"}]';
         var a = '[{\"q\":\"Hello! I\'m the Savings Bot\",\"max\":\"\",\"var\":\"\",\"type\":\"Message\",\"options\":\"Option1,Option2,Option3\",\"nextq\":\"\"},{\"q\":\"How much money do you want to invest?\",\"max\":\"100000000\",\"var\":\"q1\",\"type\":\"Integer\",\"options\":\"A,B,C,D\",\"nextq\":\"\"},{\"q\":\"For how long? (years)\",\"max\":\"100\",\"var\":\"time\",\"options\":\"\",\"type\":\"Integer\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"Do you want to withdraw money during that period?\",\"max\":\"\",\"var\":\"empty\",\"options\":\"Yes,No\",\"type\":\"Choice\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"Do you plan to add money to the savings?\",\"max\":\"\",\"var\":\"empty\",\"options\":\"Yes,No\",\"type\":\"Choice\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"The best options for you savings are:\",\"max\":\"\",\"var\":\"\",\"options\":\"\",\"type\":\"Message\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"(list of options that would appear from a query to the bank product list)\",\"max\":\"\",\"var\":\"empty\",\"options\":\"\",\"type\":\"Message\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"Do you want to start your savings now?\",\"max\":\"\",\"var\":\"empty\",\"options\":\"Yes,No\",\"type\":\"ChoiceAction\",\"nexq\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":8},{\\"intent\\":\\"No\\",\\"q\\":12}]\"},{\"q\":\"Are you our customer already?\",\"max\":\"\",\"var\":\"empty\",\"options\":\"Yes,No\",\"type\":\"ChoiceAction\",\"nexq\":\"\",\"nextq\":\"[{\\"intent\\":\\"Yes\\",\\"q\\":\\"9\\"},{\\"intent\\":\\"No\\",\\"q\\":\\"10\\"}]\"},{\"q\":\"(authenticate client)\",\"max\":\"\",\"var\":\"empty\",\"options\":\"\",\"type\":\"Message\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"(show link for products page)\",\"max\":\"\",\"var\":\"empty\",\"options\":\"\",\"type\":\"Message\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"Thank you, have a nice day\",\"max\":\"\",\"var\":\"empty\",\"options\":\"\",\"type\":\"MessageEnd\",\"nexq\":\"\",\"nextq\":\"\"},{\"q\":\"Thank you, have a nice day\",\"max\":\"\",\"var\":\"\",\"type\":\"Message\",\"options\":\"\"}]';
 
         if (flow != undefined) {
@@ -724,7 +762,7 @@ var Link = function (from, to, text) {
         }
         //this.DrawSegments(ctx);
         if (this.text != "")
-            ctx.drawImage(this.tCtx.canvas, this.xt, this.yt);
+            ctx.drawImage(this.tCtx.canvas, x2 - this.textWidth/2, y3 - 30);
     }
     this.segmentAdd = function (x1, y1, x2, y2, d) {
         this.segments[this.segments.length] = { x1: x1, y1: y1, x2: x2, y2: y2, d: d };
@@ -841,23 +879,29 @@ var Node = function (x, y, width, height, text, type, sub, name, options) {
                 }
             }
 
-            this.height = Hheader * 2 + CanvasHelper.wrapTextGetHeight(this.tCtx, sText, this.width - 20, textHeight);
-
-            this.cnv.width = this.width;
-            this.cnv.height = this.height;
-            this.tCtx.font = "10pt Verdana";
-            this.tCtx.fillStyle = "lightgray";
-            this.tCtx.fillRect(0, 0, this.width, this.height);
-
-            var cornerRadius = 4;
-            this.tCtx.lineJoin = "round";
-            this.tCtx.lineWidth = cornerRadius;
             var color = "white";
             var colorText = "#000000";
             switch (this.type) {
+                case "AdaptiveCard":
+                    color = "#EE1010";
+                    colorText = "white";
+                    sText = "CARD(EDIT)";
+                    break;
+                case "AdaptiveCardShow":
+                    color = "#EE1010";
+                    colorText = "white";
+                    sText = "CARD";
+                    break;
                 case "API":
                     color = "brown";
                     colorText = "white";
+                    sText = "CODE";
+                    this.width = 100;
+                    break;
+                case "Attachment":
+                    color = "brown";
+                    colorText = "white";
+                    sText = "CODE";
                     break;
                 case "ChoiceAction":
                     color = "#2f83bd";
@@ -875,6 +919,10 @@ var Node = function (x, y, width, height, text, type, sub, name, options) {
                     color = "cornflowerblue";
                     colorText = "white";
                     break;
+                case "EndSub":
+                    color = "green";
+                    colorText = "white";
+                    break;
                 case "LUIS":
                     color = "darkcyan";
                     colorText = "white";
@@ -887,9 +935,25 @@ var Node = function (x, y, width, height, text, type, sub, name, options) {
                     color = "salmon";
                     colorText = "white";
                     break;
+                case "ResetAllVars":
+                    color = "cornflowerblue";
+                    colorText = "white";
+                    break;
                 default:
 
             }
+            this.height = Hheader * 2 + CanvasHelper.wrapTextGetHeight(this.tCtx, sText, this.width - 20, textHeight);
+
+            this.cnv.width = this.width;
+            this.cnv.height = this.height;
+            this.tCtx.font = "10pt Verdana";
+            this.tCtx.fillStyle = "lightgray";
+            this.tCtx.fillRect(0, 0, this.width, this.height);
+
+            var cornerRadius = 4;
+            this.tCtx.lineJoin = "round";
+            this.tCtx.lineWidth = cornerRadius;
+
             this.tCtx.fillStyle = color;
             this.tCtx.strokeStyle = color;
 
