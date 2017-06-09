@@ -225,7 +225,6 @@ namespace LAM.BotFramework
                 switch (CurrentQuestionRow.QuestionType)
                 {
                     case "AdaptiveCard":
-                        
                         AdaptiveCard card = JsonConvert.DeserializeObject<AdaptiveCards.AdaptiveCard>(CurrentQuestionRow.QuestionText);
 
                         IMessageActivity replyToConversation = context.MakeMessage();
@@ -290,7 +289,7 @@ namespace LAM.BotFramework
                         await ProcessResponseAsync(context, errMessage, null);
                         break;
                     case "APIFULL":
-                        //SET THE CONTEXT
+                        //UNDOCUMENTED FEATURE
                         IMessageActivity dummyReply = context.MakeMessage();
                         BotProps BP = new BotProps();
                         BP.Properties = this.Properties;
@@ -342,7 +341,7 @@ namespace LAM.BotFramework
                                            PromptTranslated);//,RetryPrompt);
                         break;
                     case "EndSub":
-                        //THIS IS A MOVENEXT, USEFUL TO EXIT SUBS
+                        //THIS IS A MOVENEXT, USEFUL TO EXIT SUBS ONLY
                         await ProcessResponseAsync(context, "", null);
                         break;
                     case "SUB":
@@ -401,10 +400,7 @@ namespace LAM.BotFramework
                         }
                         else
                         {
-                            var replyMessage = context.MakeMessage();
-                            replyMessage.Text = PromptTranslated;
-                            replyMessage.Speak = PromptTranslated;
-                            await context.PostAsync(replyMessage);
+                            await Bot.PostAsync(context, PromptTranslated);
                             context.Wait(ProcessResponseAsync);
                             //PromptDialog.Text(context,
                             //                    MessageLoopAsync,
@@ -414,6 +410,7 @@ namespace LAM.BotFramework
                         }
                         break;
                     case "Carousel":
+                        //UNDOCUMENTED FEATURE
                         var reply = context.MakeMessage();
                         reply.AttachmentLayout = AttachmentLayoutTypes.Carousel;
                         //type,title,subtitle,text,urlforimage,urltoopen
@@ -517,12 +514,27 @@ namespace LAM.BotFramework
                         break;
                     case "Choice":
                         string[] op = CurrentQuestionRow.Options.Split(',');
-                        PromptDialog.Choice(context,
-                                                MessageLoopAsync,
-                                                op,
-                                                PromptTranslated,
-                                                RetryPrompt,
-                                                promptStyle: PromptStyle.Auto);
+
+                        List<CardAction> LCAChoice = new List<CardAction>();
+                        foreach (var opAItem in op)
+                        {
+                            LCAChoice.Add(new CardAction() { Title = opAItem, Value = opAItem, Type = ActionTypes.ImBack });
+                        }
+                        var replyC = context.MakeMessage();
+                        IList<Attachment> CardsAttachmentC = new List<Attachment>();
+                        CardsAttachmentC.Add(Bot.GetHeroCard(PromptTranslated, "", "", null, LCAChoice));
+                        replyC.Attachments = CardsAttachmentC;
+                        replyC.Speak = PromptTranslated;
+                        await context.PostAsync(replyC);
+                        context.Wait(ProcessChoiceActionAsync);
+
+                        //THIS IS THE ALTERNATIVE TO:
+                        //PromptDialog.Choice(context,
+                        //                        MessageLoopAsync,
+                        //                        op,
+                        //                        PromptTranslated,
+                        //                        RetryPrompt,
+                        //                        promptStyle: PromptStyle.Auto);
                         break;
                     case "ChoiceAction":
                         string[] opA = CurrentQuestionRow.Options.Split(',');
@@ -544,13 +556,26 @@ namespace LAM.BotFramework
                             }
 
                         }
+                        //THIS IS THE ALTERNATIVE TO:
+                        //PromptDialog.Choice(context,
+                        //                        MessageLoopAsync,
+                        //                        opA,
+                        //                        PromptTranslated,
+                        //                        RetryPrompt,
+                        //                        promptStyle: PromptStyle.Auto);
 
-                        PromptDialog.Choice(context,
-                                                MessageLoopAsync,
-                                                opA,
-                                                PromptTranslated,
-                                                RetryPrompt,
-                                                promptStyle: PromptStyle.Auto);
+                        List<CardAction> LCAChoiceAction = new List<CardAction>();
+                        foreach (var opAItem in opA)
+                        {
+                            LCAChoiceAction.Add(new CardAction() { Title = opAItem, Value = opAItem, Type = ActionTypes.ImBack });
+                        }
+                        var replyCA=context.MakeMessage();
+                        IList<Attachment> CardsAttachmentCA = new List<Attachment>();
+                        CardsAttachmentCA.Add(Bot.GetHeroCard(PromptTranslated, "", "", null, LCAChoiceAction));
+                        replyCA.Attachments = CardsAttachmentCA;
+                        replyCA.Speak = PromptTranslated;
+                        await context.PostAsync(replyCA);
+                        context.Wait(ProcessChoiceActionAsync);
                         break;
                     case "Hero":
                         var replyH = context.MakeMessage();
@@ -844,6 +869,58 @@ namespace LAM.BotFramework
         #endregion
 
         #region ProcessResponse
+        private async Task ProcessChoiceActionAsync(IDialogContext context, IAwaitable<object> result)
+        {
+            Activity aResult = (await result) as Activity;
+            string tResult = aResult.Text;
+
+            Question Q = new Question(context);
+            List<QuestionRow> LQJ = Q.Questions();
+            QuestionRow QJ = LQJ[Q.CurrentQuestion];
+
+            string[] opA = QJ.Options.Split(',');
+            if (QJ.Options == "")
+            {
+                string st = QJ.NextQ;
+                if (!string.IsNullOrEmpty(st))
+                {
+                    if (st.IndexOf('{') > -1)
+                    {
+                        st = st.Replace("'", "\"");
+                        List<NextQuestion> LNQ = JsonConvert.DeserializeObject<List<NextQuestion>>(st);
+                        opA = new string[LNQ.Count];
+                        for (int i = 0; i < LNQ.Count; i++)
+                        {
+                            opA[i] = LNQ[i].intent;
+                        }
+                    }
+                }
+
+            }
+            bool bFound = false;
+            foreach (string item in opA)
+            {
+                if (item == tResult)
+                    bFound = true;
+            }
+            if (bFound)
+            {
+                await ProcessResponseAsync(context, tResult, null);
+            }
+            else
+            {
+                string validResponse = "";
+                foreach (string item in opA)
+                {
+                    if (validResponse != "")
+                        validResponse += ", ";
+                    validResponse += item;
+                }
+                await context.PostAsync("Please enter a valid response: " + validResponse);
+                context.Wait(ProcessChoiceActionAsync);
+            }
+        }
+
         private async Task ProcessAdaptiveCardAsync(IDialogContext context, IAwaitable<object> result)
         {
             Question Q = new Question(context);
