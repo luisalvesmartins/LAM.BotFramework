@@ -9,7 +9,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <projectUrl>https://github.com/luisalvesmartins/LAMBotFramework</projectUrl>
     <description>Framework to build datadriven bots using the Bot Framework</description>
-    <releaseNotes>Version 1.0.3.1</releaseNotes>
+    <releaseNotes>Version 1.0.3.2</releaseNotes>
     <copyright>Copyright 2017</copyright>
     <tags>Bot Framework</tags>
   </metadata>
