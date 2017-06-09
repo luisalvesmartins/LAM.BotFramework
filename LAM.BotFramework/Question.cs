@@ -400,10 +400,18 @@ namespace LAM.BotFramework
                             context.Wait(ProcessResponseBypassAsync);
                         }
                         else
-                            PromptDialog.Text(context,
-                                            MessageLoopAsync,
-                                            PromptTranslated,
-                                            RetryPrompt);
+                        {
+                            var replyMessage = context.MakeMessage();
+                            replyMessage.Text = PromptTranslated;
+                            replyMessage.Speak = PromptTranslated;
+                            await context.PostAsync(replyMessage);
+                            context.Wait(ProcessResponseAsync);
+                            //PromptDialog.Text(context,
+                            //                    MessageLoopAsync,
+                            //                    PromptTranslated,
+                            //                    RetryPrompt);
+
+                        }
                         break;
                     case "Carousel":
                         var reply = context.MakeMessage();
@@ -601,14 +609,21 @@ namespace LAM.BotFramework
                     case "Message":
                         if (!bHasHero)
                         {
-                            await context.PostAsync(PromptTranslated);
+                            var replyMessage = context.MakeMessage();
+                            replyMessage.Text = PromptTranslated;
+                            replyMessage.Speak = PromptTranslated;
+                            await context.PostAsync(replyMessage);
                         }
                         await ProcessResponseAsync(context, "", null);
                         break;
                     case "MessageEnd":
                         if (!bHasHero)
                         {
-                            await context.PostAsync(PromptTranslated);
+                            var replyMessageEnd = context.MakeMessage();
+                            replyMessageEnd.Text = PromptTranslated;
+                            replyMessageEnd.Speak = PromptTranslated;
+                            await context.PostAsync(replyMessageEnd);
+                            //await context.PostAsync(PromptTranslated);
                         }
 
                         context.Done(true);
@@ -689,44 +704,6 @@ namespace LAM.BotFramework
         }
         #endregion
 
-        private async Task ProcessAdaptiveCardAsync(IDialogContext context, IAwaitable<object> result)
-        {
-            Question Q = new Question(context);
-            List<QuestionRow> LQJ = Q.Questions();
-            QuestionRow QJ = LQJ[Q.CurrentQuestion];
-
-            Activity value = await result as Activity;
-            string v="";
-            if (value.Value == null)
-            {
-                v = value.Text;
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(QJ.Options))
-                {
-                    //assume "Text" is default value
-                    dynamic dValue = value.Value;
-                    v = dValue.Text;
-                }
-                else
-                {
-                    try
-                    {
-                        Newtonsoft.Json.Linq.JObject J = value.Value as Newtonsoft.Json.Linq.JObject;
-                        v = J.SelectToken(QJ.Options).ToString();
-                    }
-                    catch (Exception e)
-                    {
-                        v = "NOT FOUND";
-                    }
-
-                }
-            }
-            ConversationLog.Log(context, "USER", v, LogToken, Q.CurrentQuestion);
-
-            await ProcessResponseAsync(context, v, null);
-        }
 
         private async Task HeroCardPromptAsync(IDialogContext context, string language)
         {
@@ -761,7 +738,7 @@ namespace LAM.BotFramework
                 CardAction CA = new CardAction(actiontype, ati, value: ava);
                 LCA.Add(CA);
             }
-
+            replyH.Speak = iti;
             replyH.Attachments = new List<Attachment>
                     {
                         Bot.GetHeroCard(iti, isu, ite,new List<CardImage>() {  new CardImage(url: item1.imageURL) }, LCA)
@@ -867,6 +844,50 @@ namespace LAM.BotFramework
         #endregion
 
         #region ProcessResponse
+        private async Task ProcessAdaptiveCardAsync(IDialogContext context, IAwaitable<object> result)
+        {
+            Question Q = new Question(context);
+            List<QuestionRow> LQJ = Q.Questions();
+            QuestionRow QJ = LQJ[Q.CurrentQuestion];
+
+            Activity value = await result as Activity;
+            string v = "";
+            if (value.Value == null)
+            {
+                v = value.Text;
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(QJ.Options))
+                {
+                    //assume "Text" is default value
+                    dynamic dValue = value.Value;
+                    v = dValue.Text;
+                }
+                else
+                {
+                    try
+                    {
+                        Newtonsoft.Json.Linq.JObject J = value.Value as Newtonsoft.Json.Linq.JObject;
+                        v = J.SelectToken(QJ.Options).ToString();
+                    }
+                    catch (Exception e)
+                    {
+                        v = "NOT FOUND";
+                    }
+
+                }
+            }
+            ConversationLog.Log(context, "USER", v, LogToken, Q.CurrentQuestion);
+
+            await ProcessResponseAsync(context, v, null);
+        }
+
+        private async Task ProcessResponseAsync(IDialogContext context, IAwaitable<object> result)
+        {
+            Activity act = (await result) as Activity;
+            await ProcessResponseAsync(context, act.Text, null);
+        }
         protected async Task ProcessResponseAsync(IDialogContext context, IEnumerable<Attachment> result)
         {
             Question Q = new Question(context);
